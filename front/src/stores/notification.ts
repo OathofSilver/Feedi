@@ -14,7 +14,6 @@ export const useNotificationStore = defineStore('notification', () => {
   const notifList = ref<NotificationItem[]>([])
   const unread = ref(0)
   const panelOpen = ref(false)
-  const connected = ref(false)
 
   let cleanup: (() => void) | null = null
   let retryTimer: ReturnType<typeof setTimeout> | null = null
@@ -22,7 +21,6 @@ export const useNotificationStore = defineStore('notification', () => {
   let fetching = false
 
   const unreadCount = computed(() => unread.value)
-  const isOpen = computed(() => panelOpen.value)
 
   /** 拉取最新一页列表并刷新未读计数 */
   async function refresh(silent = true) {
@@ -57,7 +55,6 @@ export const useNotificationStore = defineStore('notification', () => {
     if (!auth.isAuthed) return
     cleanup?.()
     refresh()
-    connected.value = true
     cleanup = connectStream(
       // 收到新通知事件：提示 + 刷新列表
       () => {
@@ -80,7 +77,6 @@ export const useNotificationStore = defineStore('notification', () => {
   function close() {
     cleanup?.()
     cleanup = null
-    connected.value = false
     if (retryTimer) {
       clearTimeout(retryTimer)
       retryTimer = null
@@ -111,5 +107,5 @@ export const useNotificationStore = defineStore('notification', () => {
 
   onScopeDispose(close)
 
-  return { notifList, unreadCount, isOpen, connected, refresh, ensureList, markSeen, closePanel, open, close }
+  return { notifList, unreadCount, refresh, ensureList, markSeen, closePanel, open, close }
 })

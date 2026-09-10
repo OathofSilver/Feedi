@@ -49,7 +49,17 @@ async function doSearch() {
   }
 }
 
+/** 搜索框回车：中文输入法选词阶段的 Enter 不触发搜索 */
+function onSearchEnter(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return
+  doSearch()
+}
+
 function goVideo(id: number) {
+  if (id >= 9_000_000) {
+    toast('演示内容暂不支持打开', 'info')
+    return
+  }
   router.push({ name: 'videoDetail', params: { id: String(id) } })
 }
 function goAuthor(id: number) {
@@ -70,7 +80,7 @@ function bg(it: FeedVideoItem) {
         <input
           v-model="keyword"
           placeholder="搜索话题 / 标签"
-          @keyup.enter="doSearch"
+          @keyup.enter="onSearchEnter"
         />
         <button class="go" @click="doSearch">搜索</button>
       </div>
@@ -86,7 +96,6 @@ function bg(it: FeedVideoItem) {
       <div v-if="tagResult.length" class="grid">
         <div v-for="(it, i) in tagResult" :key="it.id" class="cell" @click="goVideo(it.id)">
           <div class="thumb" :style="{ backgroundImage: `url('${bg(it)}')` }">
-            <span class="rank" v-if="false"></span>
             <span class="plays"><DyIcon name="play" :size="14" />{{ fmtCount(it.likes_count) }}</span>
           </div>
           <p class="t ellipsis">{{ it.title }}</p>

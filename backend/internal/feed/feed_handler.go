@@ -24,10 +24,10 @@ func (f *FeedHandler) ListLatest(c *gin.Context) {
 	if req.Limit <= 0 || req.Limit > 50 {
 		req.Limit = 10
 	}
-	//数据库中存储时间的类型 都是time.Time
+	// 游标单位统一为毫秒（与 /feed/following 及 Redis global_timeline score 对齐）
 	var latestTime time.Time
 	if req.LatestTime > 0 {
-		latestTime = time.UnixMilli(req.LatestTime) // 若前端传秒，需改为 Unix，否则会错误
+		latestTime = time.UnixMilli(req.LatestTime)
 	}
 	// 4. 从 JWT 中获取当前登录用户 ID，若未登录或获取失败则视为游客（ID=0）
 	viewerAccountID, err := jwt.GetAccountID(c)
@@ -107,9 +107,10 @@ func (f *FeedHandler) ListByFollowing(c *gin.Context) {
 	if err != nil {
 		viewerAccountID = 0
 	}
+	// 游标单位统一为毫秒（与 /feed/latest 及 Redis global_timeline score 对齐）
 	var latestTime time.Time
 	if req.LatestTime > 0 {
-		latestTime = time.Unix(req.LatestTime, 0)
+		latestTime = time.UnixMilli(req.LatestTime)
 	}
 	feedItems, err := f.service.ListByFollowing(c.Request.Context(), req.Limit, latestTime, viewerAccountID)
 	if err != nil {

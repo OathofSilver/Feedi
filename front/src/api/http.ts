@@ -43,8 +43,6 @@ export function hasToken() {
   return !!accessToken
 }
 
-let refreshing: Promise<boolean> | null = null
-
 async function doRefresh(): Promise<boolean> {
   if (!refreshToken) return false
   try {
@@ -64,16 +62,6 @@ async function doRefresh(): Promise<boolean> {
     clearTokens()
     return false
   }
-}
-
-/** 供模块调用：确保拿到有效 token */
-export async function ensureToken(): Promise<boolean> {
-  if (accessToken) return true
-  if (refreshing) return refreshing
-  refreshing = doRefresh().finally(() => {
-    refreshing = null
-  })
-  return refreshing
 }
 
 async function rawPost<T>(url: string, body: unknown, withToken: boolean): Promise<T> {
@@ -158,50 +146,47 @@ export const http = {
   },
 }
 
-export async function sseConnect(
+export function sseConnect(
   url: string,
   onData: (raw: string) => void,
   onError: () => void,
-): Promise<() => void> {
-  if (!accessToken) await loadTokens()
+): () => void {
   const controller = new AbortController()
-  try {
-    const resp = await fetch(url, {
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-      signal: controller.signal,
-    })
-    const reader = resp.body?.getReader()
-    if (!reader) throw new Error('no body')
+  // 异步建连在内部自执行：调用方立即拿到 abort 句柄，
+  // 无论连接建立/中断/手动关闭，close 语义都稳定（不会被 Promise 吞掉）。
+  void (async () => {
+    if (!accessToken) await loadTokens()
+    try {
+      const resp = await fetch(url, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        signal: controller.signal,
+      })
+      const reader = resp.body?.getReader()
+      if (!reader) throw new Error('no body')
 
-    const decoder = new TextDecoder()
-    let buf = ''
-    const pump = async () => {
-      try {
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buf += decoder.decode(value, { stream: true })
-          let idx: number
-          while ((idx = buf.indexOf('\n\n')) >= 0) {
-            const chunk = buf.slice(0, idx)
-            buf = buf.slice(idx + 2)
-            // 只取 data: 行
-            const dataLine = chunk
-              .split('\n')
-              .find((l) => l.startsWith('data:'))
-              ?.slice(5)
-              .trim()
-            if (dataLine) onData(dataLine)
-          }
+      const decoder = new TextDecoder()
+      let buf = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        let idx: number
+        while ((idx = buf.indexOf('\n\n')) >= 0) {
+          const chunk = buf.slice(0, idx)
+          buf = buf.slice(idx + 2)
+          // 只取 data: 行
+          const dataLine = chunk
+            .split('\n')
+            .find((l) => l.startsWith('data:'))
+            ?.slice(5)
+            .trim()
+          if (dataLine) onData(dataLine)
         }
-      } catch {
-        /* aborted or err */
       }
-      if (!controller.signal.aborted) onError()
+    } catch {
+      /* aborted or err */
     }
-    pump()
-  } catch {
-    onError()
-  }
+    if (!controller.signal.aborted) onError()
+  })()
   return () => controller.abort()
 }

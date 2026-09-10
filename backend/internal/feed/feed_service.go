@@ -355,7 +355,7 @@ func (f *FeedService) ListByFollowing(ctx context.Context, limit int, latestBefo
 		}
 		var nextTime int64
 		if len(videos) > 0 {
-			nextTime = videos[len(videos)-1].CreateTime.Unix()
+			nextTime = videos[len(videos)-1].CreateTime.UnixMilli()
 		} else {
 			nextTime = 0
 		}
@@ -371,12 +371,12 @@ func (f *FeedService) ListByFollowing(ctx context.Context, limit int, latestBefo
 		}
 		return resp, nil
 	}
+	// 游标统一毫秒：0 表示首页，不做时间过滤（cache key 同步用毫秒）
 	var cacheKey string
 	if viewerAccountID != 0 && f.rediscache != nil {
-		// before 游标时间戳，0表示首页，不做时间过滤
 		before := int64(0)
 		if !latestBefore.IsZero() {
-			before = latestBefore.Unix()
+			before = latestBefore.UnixMilli()
 		}
 		cacheKey = f.rediscache.Key(rediscache.FeedFollowingFmt, limit, viewerAccountID, before)
 		cacheCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { FeedVideoItem } from '@/api/types'
 import { feedLatest } from '@/api/feed'
 import { likeAction, unlike } from '@/api/like'
+import { follow, unfollow, myVloggers } from '@/api/social'
 import { makeDemoItems } from '@/api/demo'
 import { useInfiniteFeed } from '@/composables/useInfiniteFeed'
 import { useAuthStore } from '@/stores/auth'
@@ -47,9 +48,28 @@ const feed = useInfiniteFeed(async (cursorObj) => {
 const scroller = ref<HTMLElement | null>(null)
 const currentIndex = ref(0)
 const globalMuted = ref(true)
-const commentFor = ref<{ videoId: number | null; open: boolean }>({ videoId: null, open: false })
 const commentVisible = ref(false)
-const followTargets = ref<Set<number>>(new Set()) // 已关注的作者 id（本地乐观）
+const commentFor = ref<number | null>(null)
+const followTargets = ref<Set<number>>(new Set()) // 已关注的作者 id（会话内真实关注态）
+
+// 登录后拉取一次自己的关注列表，作为按钮初始态
+async function syncFollowState() {
+  if (!auth.isAuthed) return
+  try {
+    const r = await myVloggers()
+    followTargets.value = new Set(r.vloggers.map((v) => v.id))
+  } catch {
+    /* 后端未就绪：保持空态 */
+  }
+}
+watch(
+  () => auth.isAuthed,
+  (authed) => {
+    followTargets.value = new Set()
+    if (authed) syncFollowState()
+  },
+  { immediate: true },
+)
 
 const items = computed(() => feed.list.value)
 
@@ -88,11 +108,11 @@ async function toggleLike(item: FeedVideoItem) {
 
 function openComments(item: FeedVideoItem) {
   commentVisible.value = true
-  commentFor.value = { videoId: item.id, open: true }
+  commentFor.value = item.id
 }
 function closeComments() {
   commentVisible.value = false
-  commentFor.value = { videoId: null, open: false }
+  commentFor.value = null
 }
 
 function toggleFollow(item: FeedVideoItem) {
@@ -101,14 +121,23 @@ function toggleFollow(item: FeedVideoItem) {
     return
   }
   const id = item.author.id
-  if (followTargets.value.has(id)) {
-    followTargets.value.delete(id)
-    toast.push('已取消关注', 'info')
-  } else {
-    followTargets.value.add(id)
-    toast.push('关注成功', 'success')
-  }
-  followTargets.value = new Set(followTargets.value)
+  const prev = followTargets.value.has(id)
+  // 乐观更新
+  const next = new Set(followTargets.value)
+  if (prev) next.delete(id)
+  else next.add(id)
+  followTargets.value = next
+  const run = prev ? unfollow(id) : follow(id)
+  run
+    .then(() => toast.push(prev ? '已取消关注' : '关注成功', prev ? 'info' : 'success'))
+    .catch((e) => {
+      // 失败回滚
+      const rollback = new Set(followTargets.value)
+      if (prev) rollback.add(id)
+      else rollback.delete(id)
+      followTargets.value = rollback
+      toastErr(e)
+    })
 }
 
 function openAuthor(item: FeedVideoItem) {
@@ -134,6 +163,8 @@ onMounted(() => {
           :item="it"
           :active="i === currentIndex"
           :global-muted="globalMuted"
+          :followed="followTargets.has(it.author.id)"
+          :show-follow="!(auth.isAuthed && it.author.id === auth.accountId)"
           @toggle-like="toggleLike(it)"
           @open-comments="openComments(it)"
           @open-author="openAuthor(it)"
@@ -180,7 +211,7 @@ onMounted(() => {
             <span v-if="notif.unreadCount" class="badge">{{ notif.unreadCount }}</span>
           </router-link>
           <router-link :to="`/profile/${auth.accountId}`" class="tn-avatar">
-            <Avatar :seed="auth.accountId ?? 0" :name="auth.username" :src="undefined" :size="34" />
+            <Avatar :seed="auth.accountId ?? 0" :name="auth.username" :src="auth.profile?.avatar_url" :size="34" />
           </router-link>
         </template>
         <template v-else>
@@ -192,7 +223,7 @@ onMounted(() => {
     <!-- 评论抽屉 -->
     <CommentPanel
       :show="commentVisible"
-      :video-id="commentFor.videoId"
+      :video-id="commentFor"
       @close="closeComments"
     />
   </div>

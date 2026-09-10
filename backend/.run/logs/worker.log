@@ -1,0 +1,2 @@
+2026/09/09 07:26:34 INFO worker 进程已启动 consumers="[like comment popularity global_timeline]"
+2026/09/09 07:26:34 timeline consumer started, queue: video.timeline.update.queue

@@ -140,19 +140,32 @@ func LoadDefault() (*Config, error) {
 	return Load(path)
 }
 
-// resolvePath 解析配置文件路径：直接使用给定路径；相对路径兼容从项目根目录启动的场景
+// resolvePath 解析配置文件路径：
+//  1. 绝对路径直接使用
+//  2. 相对路径从当前工作目录起向上逐级父目录查找（兼容从 backend/、cmd/api/ 等任意目录启动）
+//  3. 兜底尝试 backend/ 前缀（兼容从项目根目录启动）
 func resolvePath(path string) (string, error) {
 	if filepath.IsAbs(path) {
 		return path, nil
 	}
-	candidates := []string{
-		path,
-		filepath.Join("backend", path),
-	}
-	for _, c := range candidates {
-		if fi, err := os.Stat(c); err == nil && !fi.IsDir() {
-			return c, nil
+
+	dir, err := filepath.Abs(".")
+	if err == nil {
+		for i := 0; i < 4; i++ { // 最多向上 4 级，避免扫到磁盘根之外
+			candidate := filepath.Join(dir, path)
+			if fi, statErr := os.Stat(candidate); statErr == nil && !fi.IsDir() {
+				return candidate, nil
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
 		}
+	}
+
+	if fi, statErr := os.Stat(filepath.Join("backend", path)); statErr == nil && !fi.IsDir() {
+		return filepath.Join("backend", path), nil
 	}
 	return path, nil
 }

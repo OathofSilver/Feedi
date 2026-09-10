@@ -1,0 +1,138 @@
+{
+  "mode": "source_grounded",
+  "source_title": "杨大春原简历（2026-09）+ feed 代码库逐条核验 + JMeter 压测报告 + 西南科技大学官网",
+  "profile": {
+    "name": "杨大春",
+    "headline": "求职意向：Go 后端开发｜2026 届本科应届",
+    "contacts": [
+      { "label": "电话", "value": "13425922492" },
+      { "label": "邮箱", "value": "2033231795@qq.com" },
+      { "label": "年龄", "value": "22" },
+      { "label": "状态", "value": "随时到岗" }
+    ]
+  },
+  "education": [
+    {
+      "institution": "西南科技大学",
+      "program": "四川省人民政府与教育部共建高校",
+      "degree": "本科·计算机科学与技术",
+      "dates": "2022.09 - 2026.07",
+      "bullets": [
+        {
+          "text": "国家重点建设的西部 14 所高校之一（来源：学校官网简介）",
+          "verification": "source_grounded",
+          "source_note": "https://www.swust.edu.cn/11073/list.htm"
+        },
+        {
+          "text": "主修：数据结构与算法、计算机操作系统、数据库原理及应用、微机原理及技术、C++ 程序设计",
+          "verification": "source_grounded",
+          "source_note": "原简历教育背景"
+        },
+        {
+          "text": "在校期间加入本校移动互联网实验室，参与合作开发流程实践",
+          "verification": "source_grounded",
+          "source_note": "原简历校园经历"
+        }
+      ],
+      "school_source": "https://www.swust.edu.cn/11073/list.htm"
+    }
+  ],
+  "experience": [],
+  "open_source": [],
+  "projects": [
+    {
+      "name": "短视频 Feed 流系统",
+      "role": "个人全栈 Owner｜从 0→1 独立完成架构设计与前后端实现",
+      "scope": "背景：基于 Go + Gin + GORM + MySQL + Redis + RabbitMQ 与 Vue 3 + TypeScript 全栈实现的短视频社区系统，覆盖 JWT 账号鉴权、多路 Feed 流（最新 / 关注 / 点赞榜 / 热度榜）、视频发布、点赞、评论、关注、通知等核心模块，重点解决高并发读、分布式消息可靠性与容灾降级三类问题。",
+      "bullets": [
+        {
+          "text": "指标与效果：JMeter 容量压测（50/100 并发 × 60s × 4 读接口混合流量）：100 并发下整体 4162 QPS、0 错误，Feed 列表 P99 53ms、视频详情 P99 35ms；修复连接池缺陷后吞吐 612→4162 QPS（6.8×），错误率 6.66%→0%。",
+          "verification": "source_grounded",
+          "source_note": "backend/.run/loadtest/metrics.md（fix_100.jtl，2026-09-10 压测报告）",
+          "metric": { "baseline": 612, "result": 4162, "unit": "QPS", "window": "2026-09-10 JMeter 压测" }
+        },
+        {
+          "text": "我的职责：搭建 API + Worker 双进程异步架构，点赞/评论/关注/热度/时间线事件经 RabbitMQ Topic Exchange 异步解耦削峰；MQ 投递失败自动降级直写 MySQL/Redis 兜底，保障消息中间件不可用时核心业务数据不丢失。",
+          "verification": "source_grounded",
+          "source_note": "internal/like/like_service.go、internal/comment/comment_service.go 降级路径"
+        },
+        {
+          "text": "我的职责：Outbox 事务消息解决「MySQL 入库与 MQ 投递」原子性——同一本地事务写入业务数据 + Outbox 消息记录，轮询器补偿投递；独立 Timeline 消费者将发布事件写入 Redis ZSET 全局时间线（毫秒时间戳 score），自动裁剪仅保留最新 1000 条热数据，冷数据回源 MySQL 拼接。",
+          "verification": "source_grounded",
+          "source_note": "internal/video/outbox_repo.go、internal/utils/outboxpoller/、worker global_timeline 消费者"
+        },
+        {
+          "text": "我的职责：Feed 视频实体三级缓存 L1 本地缓存(5s) → L2 Redis(1h) → L3 MySQL；缓存未命中时 singleflight 合并并发回源 + SETNX token 分布式锁只放行一个回源请求，Lua 脚本校验 token 安全释放防误删他人锁；Redis 故障时核心查询自动降级 MySQL。",
+          "verification": "source_grounded",
+          "source_note": "internal/feed/feed_service.go 三级缓存与回源路径、internal/utils/redis/redis.go Lock/Unlock Lua 脚本"
+        },
+        {
+          "text": "我的职责：Feed 冷热分离 + 无抖动分页——以 ZSET 最老成员时间戳为冷热水位线，游标越过水位线自动回源 MySQL 拼接冷数据且不回写热窗口；热度榜按分钟分桶写入 ZSET，查询时 ZUNIONSTORE 聚合最近 60 个分钟窗生成只读快照（2 分钟有效），翻页复用同一 as_of 榜单版本消除实时排名抖动；点赞榜以 (点赞数, 视频 ID) 复合游标唯一化排序键，并列点赞数下分页不重不漏；毫秒级时间游标全链路统一。",
+          "verification": "source_grounded",
+          "source_note": "internal/feed/feed_service.go ListLatest/ListByPopularity"
+        },
+        {
+          "text": "我的职责：大文件分片上传与断点续传——前端 Web Crypto 逐分片生成 SHA-256 摘要，后端 Redis 维护 24h 有效期上传会话记录分片索引，逐分片摘要校验防篡改，支持中断后续传，合并完成后自动清理临时分片与会话。",
+          "verification": "source_grounded",
+          "source_note": "internal/chunk/chunk_handler.go（sha256, sessionTTL 24h）、front/src/api/video.ts"
+        },
+        {
+          "text": "我的职责：通知实时推送链路——Worker 消费点赞/评论/关注事件落库通知后，经 MQ 投递「就绪」信号至 API 进程 SSE Hub（账号→连接内存表），由持有 HTTP 长连接的 API 进程完成实时推送，并过滤用户自身触发的通知事件。",
+          "verification": "source_grounded",
+          "source_note": "internal/ssehub/、internal/worker/producer/notification.go"
+        },
+        {
+          "text": "我的职责：JMeter 压测定位 GORM 默认 MaxIdleConns=2 引发的 MySQL 短连接风暴（1.2 万 TIME_WAIT 耗尽本机临时端口导致间歇性 500），参数化连接池（MaxOpenConns/MaxIdleConns/ConnMaxLifetime）修复并复测归零，沉淀「压测→定位→修复→复测」完整闭环。",
+          "verification": "source_grounded",
+          "source_note": "internal/utils/mysql/mysql.go 连接池配置、2026-09-10 压测记录"
+        },
+        {
+          "text": "技术关键词：Go / Gin / GORM / MySQL / Redis / RabbitMQ / Outbox / SingleFlight / 分布式锁 / SSE / JWT / SHA-256 / JMeter / Vue 3 / TypeScript",
+          "verification": "source_grounded",
+          "source_note": "项目实际技术栈"
+        }
+      ]
+    },
+    {
+      "name": "分布式缓存系统 Lcache",
+      "role": "个人项目 Owner｜从 0→1 实现分布式内存缓存核心机制",
+      "scope": "背景：基于 Go 实现的高性能分布式内存缓存系统：支持 LRU / LRU-2 多级淘汰与 TTL 过期，通过 etcd 完成分布式协调，以一致性哈希路由、分段锁与请求合并应对高并发与容错场景。",
+      "bullets": [
+        {
+          "text": "我的职责：实现 LRU、LRU-2 两种淘汰算法与 Key 级自定义 TTL 定时过期清理，针对热点重复访问场景优化 LRU-2 淘汰逻辑提升命中率。",
+          "verification": "source_grounded",
+          "source_note": "原简历 Lcache 项目"
+        },
+        {
+          "text": "我的职责：自适应一致性哈希分片——支持虚拟节点与动态负载均衡（负载偏差超过 25% 时自动调整副本数），保证数据均匀分布并减少节点增减时的数据迁移。",
+          "verification": "source_grounded",
+          "source_note": "原简历 Lcache 项目"
+        },
+        {
+          "text": "我的职责：BKDR 哈希分段锁 + 两级缓存结构将锁粒度降至桶级，减少锁争用提升高并发吞吐；基于 SingleFlight 的请求合并使同一 key 并发请求仅回源一次，防止缓存击穿。",
+          "verification": "source_grounded",
+          "source_note": "原简历 Lcache 项目"
+        },
+        {
+          "text": "我的职责：基于 etcd 租约续约与 watch 增量监听实现服务注册/自动摘除并集成 gRPC 健康检查；节点间 gRPC + Protobuf 通信，写入/删除操作异步同步到对端并以标记位防止同步循环，保证分布式环境数据一致性。",
+          "verification": "source_grounded",
+          "source_note": "原简历 Lcache 项目"
+        },
+        {
+          "text": "技术关键词：Go / etcd / gRPC / Protobuf / SingleFlight / LRU-2 / 一致性哈希 / 分段锁",
+          "verification": "source_grounded",
+          "source_note": "原简历技术栈"
+        }
+      ]
+    }
+  ],
+  "awards": [
+    { "name": "语言：熟悉 Go，理解 GMP 调度模型与 GC 垃圾回收；能使用 Vue 3 + TypeScript 完成前端开发", "date": "" },
+    { "name": "MySQL：熟悉索引、锁、事务、存储引擎与 MVCC，掌握慢查询定位与索引优化方法", "date": "" },
+    { "name": "Redis：熟悉数据结构、持久化与缓存淘汰机制，理解缓存雪崩/穿透/击穿的成因与解决方案", "date": "" },
+    { "name": "消息队列：熟练使用 RabbitMQ，理解可靠投递、死信队列与幂等消费，能解决消息丢失与重复消费问题", "date": "" },
+    { "name": "框架与微服务：熟练使用 Gin，了解 go-zero 二次开发；了解 etcd 服务发现与配置管理", "date": "" },
+    { "name": "工具：熟练使用 Git 团队协作开发，熟悉 Linux 常用命令与脚本操作", "date": "" }
+  ],
+  "skills": ["Go", "Gin", "GORM", "MySQL", "Redis", "RabbitMQ", "etcd", "gRPC", "SingleFlight", "SSE", "JWT", "JMeter", "Git", "Linux", "Vue 3"]
+}

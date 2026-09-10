@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="zh-CN" data-page-node-id="56CQ4B9lzHhujqMYtWCOcq">
+<head data-page-node-id="LHkgeHrMYW77Xy17o3uCFk">
+  <meta charset="utf-8" data-page-node-id="V9nFMxaViYniJc18IjRZts">
+  <meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="sdPnHcaD8JNDNzAdigOkL5">
+  <title>ASU 风格技术简历</title>
+  <style>
+    :root {
+      --ivory: #faf9f5;
+      --slate: #141413;
+      --clay: #d97757;
+      --oat: #e3dacc;
+      --olive: #788c5d;
+      --gray-100: #f0eee6;
+      --gray-300: #d1cfc5;
+      --gray-500: #87867f;
+      --gray-700: #3d3d3a;
+      --ink-blue: #245579;
+      --link-blue: #366f96;
+      --paper: #fffefa;
+      --red-bar: #f8e8e3;
+      --blue-bar: #e5f1f5;
+      --green-bar: #eaf1e5;
+      --gray-bar: #efeee9;
+      --serif: Georgia, "Noto Serif CJK SC", "Songti SC", STSong, serif;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--gray-100); }
+
+    body {
+      margin: 0;
+      color: var(--slate);
+      background: var(--gray-100);
+      font-family: var(--sans);
+      font-size: 11px;
+      line-height: 1.48;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--link-blue); text-decoration: none; border-bottom: 1px solid rgba(54,111,150,.28); }
+    a:hover { border-bottom-color: currentColor; }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 14mm auto;
+      padding: 12mm 13mm 13mm;
+      background: var(--paper);
+      box-shadow: 0 12px 36px rgba(20,20,19,.12);
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8mm;
+      align-items: end;
+      padding-bottom: 5mm;
+      border-bottom: 2px solid var(--ink-blue);
+    }
+
+    .name {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: .06em;
+      font-weight: 750;
+    }
+
+    .headline {
+      margin: 2.5mm 0 0;
+      color: var(--ink-blue);
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: .015em;
+    }
+
+    .contact {
+      display: flex;
+      max-width: 82mm;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 1.5mm 3mm;
+      color: var(--gray-700);
+      font-size: 9.3px;
+      text-align: right;
+    }
+
+    .contact-item { white-space: nowrap; }
+    .contact-label { color: var(--gray-500); margin-right: 1mm; }
+
+    .section { margin-top: 5mm; }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 3mm;
+      margin: 0 0 2.5mm;
+      color: var(--ink-blue);
+      font-family: var(--serif);
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: .035em;
+    }
+    .section-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--ink-blue), rgba(36,85,121,.08));
+    }
+
+    .education-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4mm;
+      padding: 2.2mm 3mm;
+      border-left: 3px solid var(--ink-blue);
+      background: linear-gradient(90deg, #eef4f7 0%, rgba(238,244,247,.25) 82%, transparent 100%);
+      break-inside: avoid;
+    }
+    .education-row + .education-row { margin-top: 2mm; }
+    .education-main { min-width: 0; }
+    .education-school { color: var(--ink-blue); font-family: var(--serif); font-size: 12px; font-weight: 800; }
+    .education-program { margin-left: 2mm; font-weight: 650; }
+    .education-meta { margin-top: .8mm; color: var(--gray-700); font-size: 9.2px; }
+    .dates { white-space: nowrap; color: var(--gray-700); font-family: var(--mono); font-size: 9.5px; }
+
+    .experience { margin-bottom: 4mm; break-inside: auto; }
+    .company-bar {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      align-items: center;
+      gap: 4mm;
+      min-height: 8.2mm;
+      padding: 1.6mm 3mm;
+      border-left: 4px solid var(--clay);
+      background: var(--red-bar);
+      break-after: avoid;
+    }
+    .company-bar.brand-blue { border-left-color: #4c8aa5; background: var(--blue-bar); }
+    .company-bar.brand-green { border-left-color: var(--olive); background: var(--green-bar); }
+    .company-bar.brand-gray { border-left-color: var(--gray-500); background: var(--gray-bar); }
+    .company-left { display: flex; align-items: baseline; min-width: 0; flex-wrap: wrap; gap: 1mm 2mm; }
+    .company-name { color: var(--ink-blue); font-family: var(--serif); font-size: 12.3px; font-weight: 850; }
+    .company-team { font-weight: 650; }
+    .company-tags { color: var(--gray-700); font-size: 9.2px; }
+    .company-right { display: flex; align-items: center; gap: 3mm; }
+    .company-link { font-size: 8.8px; white-space: nowrap; }
+
+    .project {
+      padding: 2.2mm 2mm 0 3.4mm;
+      border-left: 1px solid var(--gray-300);
+      margin-left: 1.7mm;
+      break-inside: avoid-page;
+    }
+    .project + .project { margin-top: 2.5mm; padding-top: 2.7mm; border-top: 1px dotted var(--gray-300); }
+    .project-title { font-family: var(--serif); font-size: 12px; font-weight: 850; color: #1f4d70; }
+    .project-subtitle { margin-left: 2mm; color: var(--gray-700); font-weight: 650; }
+
+    .fact-block { display: grid; grid-template-columns: 19mm minmax(0,1fr); gap: 1.8mm; margin-top: 1.1mm; }
+    .fact-label { color: var(--ink-blue); font-weight: 800; white-space: nowrap; }
+    .fact-content { min-width: 0; }
+    .fact-list { margin: 0; padding-left: 4.2mm; }
+    .fact-list li { margin: 0 0 .65mm; padding-left: .5mm; }
+    .fact-list li::marker { color: var(--gray-500); }
+    .keywords { color: var(--gray-700); font-family: var(--mono); font-size: 8.9px; overflow-wrap: anywhere; }
+
+    .cards { display: grid; grid-template-columns: 1fr; gap: 2.4mm; }
+    .card {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      gap: 3mm;
+      padding: 2.4mm 3mm;
+      background: rgba(240,238,230,.48);
+      border-left: 3px solid var(--oat);
+      break-inside: avoid;
+    }
+    .card-title { font-family: var(--serif); color: var(--ink-blue); font-size: 11.5px; font-weight: 800; }
+    .card-role { margin-left: 1.5mm; color: var(--gray-700); font-weight: 650; }
+    .card-scope { margin-top: .7mm; color: var(--gray-700); }
+    .card .fact-list { margin-top: 1mm; }
+
+    .compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 6mm; }
+    .compact-item { break-inside: avoid; }
+    .award-line { display: flex; justify-content: space-between; gap: 3mm; padding: 1mm 0; border-bottom: 1px dotted var(--gray-300); }
+    .skill-list { display: flex; flex-wrap: wrap; gap: 1.4mm; }
+    .skill {
+      padding: .6mm 1.5mm;
+      border: 1px solid var(--gray-300);
+      background: var(--ivory);
+      border-radius: 2px;
+      font-family: var(--mono);
+      font-size: 8.9px;
+    }
+
+    .empty { color: var(--gray-500); font-style: italic; }
+
+    @page { size: A4; margin: 11mm 12mm 12mm; }
+    @media print {
+      html, body { background: white; }
+      body { font-size: 10.4px; }
+      .page { width: auto; min-height: auto; margin: 0; padding: 0; box-shadow: none; background: white; }
+      a { color: inherit; border-bottom: 0; }
+      .company-bar, .education-row, .card, .skill { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .section-title, .company-bar, .project-title { break-after: avoid; }
+    }
+
+    @media (max-width: 760px) {
+      .page { width: 100%; min-height: 0; margin: 0; padding: 20px 16px; }
+      .masthead { grid-template-columns: 1fr; align-items: start; }
+      .contact { justify-content: flex-start; text-align: left; max-width: none; }
+      .compact-grid { grid-template-columns: 1fr; }
+      .company-bar { grid-template-columns: 1fr; }
+      .company-right { justify-content: space-between; }
+    }
+  </style>
+</head>
+<body data-page-node-id="CDY54Nswb9B6DhwzscPH8h">
+  <main id="resume" class="page" data-page-node-id="XettCOo8SUhJ6utN2g3AP2"></main>
+  <script id="resume-data" type="application/json">{"mode":"source_grounded","source_title":"用户简历《简历.pdf》（2026 年版）+ 西南科技大学官网简介页","profile":{"name":"杨大春","headline":"Go 后端开发｜从 Outbox 事务消息到分布式缓存：把高并发 Feed 流的每一跳做成可验证的系统","location":"随时到岗","contacts":[{"label":"电话","value":"13425922492"},{"label":"邮箱","value":"2033231795@qq.com"}]},"education":[{"institution":"西南科技大学","program":"四川省人民政府与教育部共建高校｜四川省人民政府与国家国防科技工业局共建高校｜国家重点建设的西部 14 所高校之一｜办学历史源起 1952","degree":"计算机科学与技术 · 本科","dates":"2022.09 - 2026.07","bullets":[{"text":"主修课程：数据结构与算法、计算机操作系统、数据库原理及应用、C++ 程序设计、微机原理及技术。","verification":"source_grounded","source_note":"简历.pdf / 教育背景"},{"text":"校园经历：加入本校移动互联网实验室，参与合作开发流程，积累多人协作与工程化开发实践。","verification":"source_grounded","source_note":"简历.pdf / 教育背景"}]}],"experience":[{"company":"短视频 Feed 流系统","team":"个人全栈项目","dates":"2026.04 - 2026.07","brand":"red","tags":["Go","Gin","MySQL","Redis","RabbitMQ","Vue 3"],"projects":[{"name":"短视频 Feed 流系统","subtitle":"个人项目全链路 Owner｜从 0→1 搭建 API+Worker 双进程异步架构，打通写链路异步化 - 最终一致性 - 多级缓存 - 冷热分离 - 分片上传","background":[{"text":"基于 Go + Vue 3 全栈实现的短视频 Feed 流系统，覆盖账号鉴权、视频发布、点赞、评论、关注、多路 Feed 流（最新/点赞/关注/热度）与通知等核心模块。","verification":"source_grounded","source_note":"简历.pdf / 项目描述；「私信」经代码核验不存在已删除，推荐流实为多路 Feed"},{"text":"架构以 Redis 多级缓存、RabbitMQ 事件驱动异步、分片上传与断点续传、SSE 实时推送为骨架，围绕高并发、数据一致性与容灾降级设计。","verification":"source_grounded","source_note":"简历.pdf / 项目描述"}],"impact":[{"text":"压测闭环（JMeter 100 并发 × 60s，混合 latest/detail/popularity/likes_count 4 接口）：定位 GORM 默认 MaxIdleConns=2 引发的短连接风暴（本机 1.2 万+ TIME_WAIT），调优连接池（MaxOpen=100/MaxIdle=50/Lifetime=1h）后，100 并发吞吐从 612 QPS、错误率 6.66% 提升至 4162 QPS、0 错误，feed/latest P99 53ms、video/detail P99 35ms；50 并发达 4662 QPS。","verification":"source_grounded","source_note":"JMeter 压测报告 backend/.run/loadtest/metrics.md（2026-09-10）；连接池修复 internal/utils/mysql/mysql.go","metric":{"baseline":612,"result":4162,"unit":"QPS","window":"100 并发 × 60s 混合场景"}},{"text":"写链路异步化：点赞、评论、关注、热度更新写操作经 RabbitMQ Topic Exchange 异步分发，接口同步压力大幅降低；MQ 通道故障时自动直写 MySQL/Redis 兜底，消息中间件不可用场景下核心业务数据不丢失。","verification":"source_grounded","source_note":"简历.pdf / MQ 异步解耦 + 降级容灾"},{"text":"读链路三级缓存：Feed 视频实体采用 L1 本地缓存（5s TTL）→ L2 Redis（1h TTL）→ L3 MySQL；缓存未命中时 singleflight 合并并发回源，配合 SETNX 分布式锁只放行 1 个回源请求、其余等待——同一失效 key 的并发请求只打 1 次数据库，防缓存击穿。","verification":"source_grounded","source_note":"简历.pdf / 三级缓存与防击穿"},{"text":"时间线热窗口：全局时间线以 Redis ZSET（时间戳为 Score）构建，仅保留最新 1000 条热数据，热数据读取直接命中 ZSET；自动裁剪避免热窗口无界膨胀。","verification":"source_grounded","source_note":"简历.pdf / Outbox 与 Timeline 消费者"},{"text":"热度榜快照：按分钟分桶写入 ZSET，查询时 ZUNIONSTORE 聚合最近 60 个分钟窗生成只读快照（2 分钟有效），翻页复用同一 as_of 榜单版本，消除实时排名变化导致的翻页重复与跳页；点赞榜以 (点赞数, 视频 ID) 复合游标唯一化排序键，并列点赞数下分页不重不漏。","verification":"source_grounded","source_note":"简历.pdf / Feed 冷热分离 + 无抖动分页"},{"text":"通知实时触达：点赞/评论/关注事件经 MQ 分发至 SSE Hub（internal/ssehub）实时推送给目标用户，并过滤用户自身触发的事件，前端无需轮询。","verification":"source_grounded","source_note":"internal/ssehub/{ssehub,broadcaster}.go；internal/worker/producer/notification.go"},{"text":"大文件上传：5MB 分片 + 逐分片 SHA-256 校验防篡改，Redis 维护 24 小时有效期上传会话与已传分片索引，支持同一文件断点续传；合并完成后自动清理临时分片与缓存会话。","verification":"source_grounded","source_note":"简历.pdf / 大文件分片上传与断点续传；哈希算法经代码核验为 SHA-256（internal/chunk/chunk_handler.go）"}],"responsibilities":[{"text":"独立完成 API + Worker 双进程架构搭建：写操作经 RabbitMQ Topic Exchange 异步解耦削峰；设计 MQ 故障降级策略，通道发送失败自动直写 MySQL/Redis 兜底。","verification":"source_grounded","source_note":"简历.pdf / 个人工作第 1 条"},{"text":"实现 Outbox 事务消息保证分布式最终一致性：视频发布在同一本地事务中写入业务数据 + Outbox 消息记录，定时任务轮询未投递记录发送 MQ、投递成功删除记录，规避“业务入库成功但事件丢失”的不一致问题。","verification":"source_grounded","source_note":"简历.pdf / Outbox 事务消息"},{"text":"实现独立 Timeline 消费者：消费视频发布事件写入 Redis ZSET 构建全局时间线，以时间戳为 Score 排序并自动裁剪至近 1000 条热数据。","verification":"source_grounded","source_note":"简历.pdf / Timeline 消费者"},{"text":"实现冷热分离与无抖动分页：ZSET 热窗口承接热数据读取，游标越过水位线自动回源 MySQL 拼接冷数据，冷区结果不回写热窗口；热度榜分钟分桶 + ZUNIONSTORE 快照 + as_of 版本化翻页。","verification":"source_grounded","source_note":"简历.pdf / 冷热分离与分页方案"},{"text":"实现三级缓存与降级链路：singleflight 合并回源 + SETNX 分布式锁防击穿；Redis 故障时核心查询自动回退 MySQL，保障缓存层故障下服务可用。","verification":"source_grounded","source_note":"简历.pdf / 三级缓存与防击穿；「鉴权回退」表述经代码核验失实已删除"},{"text":"搭建 JMeter 压测闭环并修复连接池短板：定位 GORM 默认连接池参数导致的高并发短连接风暴，完成连接池调优与修复前后吞吐/错误率/P99 对比验证。","verification":"source_grounded","source_note":"backend/.run/loadtest/feed_loadtest.jmx 与修复前后 JTL；internal/utils/mysql/mysql.go"}],"keywords":["Go","Gin","MySQL","Redis","RabbitMQ","Outbox 事务消息","Topic Exchange","SingleFlight","SETNX 分布式锁","ZSET 时间线","ZUNIONSTORE 快照","SSE 实时推送","分片上传","断点续传","SHA-256 校验","JMeter 压测","GORM 连接池调优"]}]},{"company":"分布式缓存系统 Lcache","team":"个人项目","dates":"2026.04 - 2026.06","brand":"blue","page_break_before":true,"tags":["Go","etcd","gRPC","Protobuf","SingleFlight"],"projects":[{"name":"分布式缓存系统 Lcache","subtitle":"全链路 Owner｜从 0→1 实现一致性哈希路由 - 桶级分段锁 - etcd 服务发现 - gRPC 节点同步","background":[{"text":"基于 Go 实现的高性能分布式内存缓存系统，支持 LRU / LRU-2 多种缓存淘汰策略、TTL 过期与基于 etcd 的分布式协调，面向分布式环境下的高效数据共享与访问。","verification":"source_grounded","source_note":"简历.pdf / 项目描述"}],"impact":[{"text":"负载均衡：实现自适应一致性哈希，支持虚拟节点与动态负载均衡，节点负载偏差超过 25% 时自动调整副本数，保证数据均匀分布并减少节点增减时的数据迁移。","verification":"source_grounded","source_note":"简历.pdf / 自适应一致性哈希分片"},{"text":"并发吞吐：BKDR 哈希分段锁 + 两级缓存结构将锁粒度降至桶级，减少锁争用、提升高并发吞吐；SingleFlight 请求合并使同一 key 的并发请求仅回源 1 次，防缓存击穿、降低后端压力。","verification":"source_grounded","source_note":"简历.pdf / 锁粒度优化与请求合并"},{"text":"可用性：基于 etcd 租约续约 + watch 增量监听实现节点自动注册/摘除，集成 gRPC 健康检查，节点上下线对客户端透明。","verification":"source_grounded","source_note":"简历.pdf / 服务发现"}],"responsibilities":[{"text":"实现 LRU、LRU-2 两种缓存淘汰算法与 Key 自定义 TTL 定时过期清理，并针对热点重复访问场景优化 LRU-2 淘汰逻辑。","verification":"source_grounded","source_note":"简历.pdf / 多缓存淘汰策略"},{"text":"实现 BKDR 哈希分段锁与两级缓存结构，将锁粒度从全局降低到桶级，减少锁争用。","verification":"source_grounded","source_note":"简历.pdf / 锁粒度优化"},{"text":"基于 etcd 实现服务注册与发现：租约续约维持节点在线状态，watch 增量监听节点变化实现自动注册/摘除，并集成 gRPC 健康检查。","verification":"source_grounded","source_note":"简历.pdf / 服务发现"},{"text":"基于 gRPC + Protobuf 实现节点间通信：写入/删除操作异步同步到对端，以标记防止同步循环，保证分布式环境下的数据一致性。","verification":"source_grounded","source_note":"简历.pdf / 节点通信"}],"keywords":["Go","etcd","gRPC","Protobuf","一致性哈希","虚拟节点","LRU-2","TTL","BKDR 分段锁","SingleFlight","租约续约","watch 增量监听","健康检查"]}]}],"open_source":[],"projects":[{"name":"工程技能图谱","role":"Go 后端技术栈","bullets":[{"text":"语言：熟悉 Go 语言开发，了解 GPM 调度模型与 GC 垃圾回收机制。","verification":"source_grounded","source_note":"简历.pdf / 技能证书-语言"},{"text":"MySQL：熟悉索引、锁、事务、存储引擎、MVCC 与日志体系，掌握 MySQL 查询优化方法。","verification":"source_grounded","source_note":"简历.pdf / 技能证书-数据库"},{"text":"Redis：熟悉数据结构、持久化机制与缓存淘汰机制，理解缓存雪崩、穿透、击穿场景及解决方案。","verification":"source_grounded","source_note":"简历.pdf / 技能证书-数据库"},{"text":"框架：熟练使用 Gin、go-zero 等开发框架，能针对业务进行二次开发。","verification":"source_grounded","source_note":"简历.pdf / 技能证书-框架"},{"text":"中间件：熟练使用 RabbitMQ，理解消息队列可靠投递原理与死信队列，能解决消息丢失与重复消费问题；熟悉 etcd 服务发现与配置管理。","verification":"source_grounded","source_note":"简历.pdf / 技能证书-微服务与中间件"},{"text":"工具：熟练使用 Git 进行团队协作开发，掌握 Linux 常用命令与脚本操作。","verification":"source_grounded","source_note":"简历.pdf / 技能证书-工具"}]}],"awards":[],"skills":[]}</script>
+  <script>
+    (() => {
+      'use strict';
+      const data = JSON.parse(document.getElementById('resume-data').textContent);
+      const root = document.getElementById('resume');
+      const el = (tag, cls, text) => {
+        const node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text !== undefined && text !== null) node.textContent = String(text);
+        return node;
+      };
+      const safeUrl = value => {
+        try {
+          const u = new URL(value, window.location.href);
+          return ['http:', 'https:', 'mailto:'].includes(u.protocol) ? value : null;
+        } catch (_) { return null; }
+      };
+      const link = (label, url, cls) => {
+        const safe = safeUrl(url);
+        if (!safe) return el('span', cls || '', label);
+        const a = el('a', cls || '', label);
+        a.href = safe;
+        if (!safe.startsWith('mailto:')) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+        return a;
+      };
+      const section = title => {
+        const wrap = el('section', 'section');
+        wrap.append(el('h2', 'section-title', title));
+        root.append(wrap);
+        return wrap;
+      };
+      const bulletList = items => {
+        const ul = el('ul', 'fact-list');
+        (items || []).forEach(item => ul.append(el('li', '', typeof item === 'string' ? item : item.text)));
+        return ul;
+      };
+      const factBlock = (labelText, content) => {
+        const block = el('div', 'fact-block');
+        block.append(el('div', 'fact-label', labelText));
+        const body = el('div', 'fact-content');
+        if (Array.isArray(content)) body.append(bulletList(content));
+        else if (content instanceof Node) body.append(content);
+        else body.textContent = content || '';
+        block.append(body);
+        return block;
+      };
+
+      const p = data.profile || {};
+      document.title = [p.name, p.headline].filter(Boolean).join('｜') || 'ASU 风格技术简历';
+      const masthead = el('header', 'masthead');
+      const identity = el('div', 'identity');
+      identity.append(el('h1', 'name', p.name || '姓名'));
+      identity.append(el('p', 'headline', p.headline || '技术方向'));
+      masthead.append(identity);
+      const contacts = el('div', 'contact');
+      if (p.location) contacts.append(el('span', 'contact-item', p.location));
+      (p.contacts || []).forEach(item => {
+        const wrap = el('span', 'contact-item');
+        if (item.label) wrap.append(el('span', 'contact-label', item.label));
+        wrap.append(link(item.value || item.label || '', item.url, ''));
+        contacts.append(wrap);
+      });
+      masthead.append(contacts);
+      root.append(masthead);
+
+      if ((data.education || []).length) {
+        const s = section('教育经历');
+        data.education.forEach(item => {
+          const row = el('div', 'education-row');
+          const main = el('div', 'education-main');
+          const head = el('div', '');
+          head.append(el('span', 'education-school', item.institution));
+          head.append(el('span', 'education-program', [item.program, item.degree].filter(Boolean).join('｜')));
+          main.append(head);
+          const meta = [];
+          if (item.degree_awarder) meta.push(`学位授予方：${item.degree_awarder}`);
+          if (item.partner) meta.push(`合作方：${item.partner}（${item.partner_type || '合作类型未说明'}）`);
+          if (meta.length) main.append(el('div', 'education-meta', meta.join('；')));
+          if ((item.bullets || []).length) main.append(bulletList(item.bullets));
+          row.append(main, el('div', 'dates', item.dates || ''));
+          s.append(row);
+        });
+      }
+
+      if ((data.experience || []).length) {
+        const s = section('实习 / 工作经历');
+        data.experience.forEach(exp => {
+          const wrap = el('article', 'experience');
+          const bar = el('div', `company-bar brand-${['red','blue','green','gray'].includes(exp.brand) ? exp.brand : 'gray'}`);
+          const left = el('div', 'company-left');
+          left.append(el('span', 'company-name', exp.company));
+          if (exp.team) left.append(el('span', 'company-team', `｜${exp.team}`));
+          if ((exp.tags || []).length) left.append(el('span', 'company-tags', `｜${exp.tags.join(' · ')}`));
+          const right = el('div', 'company-right');
+          right.append(el('span', 'dates', exp.dates || ''));
+          if (exp.link) right.append(link(exp.link.label || '相关链接', exp.link.url, 'company-link'));
+          bar.append(left, right);
+          wrap.append(bar);
+          (exp.projects || []).forEach(project => {
+            const block = el('div', 'project');
+            const title = el('div', '');
+            title.append(el('span', 'project-title', project.name));
+            if (project.subtitle) title.append(el('span', 'project-subtitle', `— ${project.subtitle}`));
+            block.append(title);
+            if ((project.background || []).length) block.append(factBlock('背景：', project.background));
+            if ((project.impact || []).length) block.append(factBlock('指标与效果：', project.impact));
+            if ((project.responsibilities || []).length) block.append(factBlock('我的职责：', project.responsibilities));
+            if ((project.keywords || []).length) block.append(factBlock('技术关键词：', el('div', 'keywords', project.keywords.join(' / '))));
+            wrap.append(block);
+          });
+          s.append(wrap);
+        });
+      }
+
+      const renderCards = (title, items, isOpenSource) => {
+        if (!items || !items.length) return;
+        const s = section(title);
+        const cards = el('div', 'cards');
+        items.forEach(item => {
+          const card = el('article', 'card');
+          const main = el('div', '');
+          const heading = el('div', '');
+          heading.append(el('span', 'card-title', isOpenSource ? item.project : item.name));
+          if (item.role) heading.append(el('span', 'card-role', `｜${item.role}`));
+          main.append(heading);
+          if (item.scope) main.append(el('div', 'card-scope', item.scope));
+          if ((item.bullets || []).length) main.append(bulletList(item.bullets));
+          card.append(main);
+          if (item.url) card.append(link('证据 / 项目链接', item.url, 'company-link'));
+          cards.append(card);
+        });
+        s.append(cards);
+      };
+      renderCards('开源贡献', data.open_source, true);
+      renderCards('技术项目与沉淀', data.projects, false);
+
+      if ((data.awards || []).length || (data.skills || []).length) {
+        const s = section('奖项与技能');
+        const grid = el('div', 'compact-grid');
+        if ((data.awards || []).length) {
+          const col = el('div', 'compact-item');
+          data.awards.forEach(item => {
+            const row = el('div', 'award-line');
+            row.append(el('span', '', item.name), el('span', 'dates', item.date || ''));
+            col.append(row);
+          });
+          grid.append(col);
+        }
+        if ((data.skills || []).length) {
+          const list = el('div', 'skill-list compact-item');
+          data.skills.forEach(item => list.append(el('span', 'skill', item)));
+          grid.append(list);
+        }
+        s.append(grid);
+      }
+
+    })();
+  </script>
+</body>
+</html>

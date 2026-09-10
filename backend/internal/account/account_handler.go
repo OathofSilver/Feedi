@@ -16,8 +16,8 @@ import (
 
 // 头像上传相关配置
 const (
-	avatarUploadDir = "uploads/avatars" // 头像本地保存目录
-	maxAvatarBytes  = 5 << 20           // 单张头像大小上限 5MB
+	avatarUploadDir = ".run/uploads/avatars" // 头像本地保存目录（与 /static 静态根一致）
+	maxAvatarBytes  = 5 << 20                // 单张头像大小上限 5MB
 )
 
 // allowedAvatarExts 允许的头像图片扩展名白名单

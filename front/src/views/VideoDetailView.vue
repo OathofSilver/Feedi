@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { videoDetail, deleteVideo } from '@/api/video'
-import { likeAction, unlike } from '@/api/like'
+import { accountInfo } from '@/api/account'
+import { likeAction, unlike, isLiked } from '@/api/like'
 import type { Video } from '@/api/types'
 import { demoGradient, fmtTime, fmtCount } from '@/api/normalize'
 import { useAuthStore } from '@/stores/auth'
@@ -23,7 +24,7 @@ const likeCount = ref(0)
 const coverFailed = ref(false)
 const commentOpen = ref(false)
 const videoEl = ref<HTMLVideoElement | null>(null)
-const playing = ref(false)
+const authorAvatar = ref<string | undefined>(undefined)
 
 const grad = () => (video.value ? demoGradient(video.value.id) : '')
 const coverSrc = () => (video.value && video.value.cover_url && !coverFailed.value ? video.value.cover_url : '')
@@ -32,19 +33,44 @@ async function load() {
   const id = Number(route.params.id)
   if (!id) return
   loading.value = true
+  video.value = null
+  videoErr.value = false
+  coverFailed.value = false
+  commentOpen.value = false
+  liked.value = false
+  likeCount.value = 0
   try {
     const v = await videoDetail(id)
     video.value = v
     likeCount.value = v.likes_count
-    // 注：detail 未返回 is_liked，且后端未提供按单视频查赞的公开接口，
-    // 故初始一律视为未点赞（登录用户点赞后本地维护）。
+    authorAvatar.value = undefined
+    // detail 不含作者头像，单独查一次作者公开资料
+    accountInfo(v.author_id)
+      .then((a) => {
+        authorAvatar.value = a.avatar_url
+      })
+      .catch(() => {
+        /* 保留占位 */
+      })
+    // 注：detail 未返回 is_liked，登录用户额外查询一次真实点赞态；
+    // 游客一律视为未点赞（点击后引导登录）。
     liked.value = false
+    if (auth.isAuthed) {
+      try {
+        liked.value = (await isLiked(id)).is_liked
+      } catch {
+        /* ignore */
+      }
+    }
   } catch (e) {
     toastErr(e)
   } finally {
     loading.value = false
   }
 }
+
+// 同一详情路由参数变化（组件复用）时重新加载，避免内容与 URL 不一致
+watch(() => route.params.id, load, { immediate: true })
 
 async function doLike() {
   if (!auth.isAuthed) {
@@ -85,8 +111,6 @@ function togglePlay() {
   if (el.paused) el.play()
   else el.pause()
 }
-
-onMounted(load)
 </script>
 
 <template>
@@ -101,8 +125,6 @@ onMounted(load)
         playsinline
         controls
         autoplay
-        @play="playing = true"
-        @pause="playing = false"
         @error="videoErr = true"
       ></video>
       <div v-if="videoErr || !video.play_url" class="err">
@@ -119,7 +141,7 @@ onMounted(load)
 
       <div class="author-row">
         <div class="au" @click="router.push({ name: 'profile', params: { id: String(video.author_id) } })">
-          <Avatar :seed="video.author_id" :name="video.username" :src="undefined" :size="44" />
+          <Avatar :seed="video.author_id" :name="video.username" :src="authorAvatar" :size="44" />
           <div>
             <b>@{{ video.username }}</b>
             <span>{{ fmtTime(video.create_time) }}</span>

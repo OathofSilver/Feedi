@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { uploadVideoFile, uploadCoverFile, publishVideo } from '@/api/video'
+import { uploadVideoChunked, uploadCoverFile, publishVideo } from '@/api/video'
 import { toast, toastErr } from '@/stores/toast'
 import DyIcon from '@/components/common/DyIcon.vue'
 
 const router = useRouter()
+
+const MAX_VIDEO_SIZE = 200 * 1024 * 1024 // 与界面提示一致：200MB
 
 const videoFile = ref<File | null>(null)
 const coverFile = ref<File | null>(null)
@@ -14,28 +16,61 @@ const desc = ref('')
 const videoPreview = ref('')
 const coverPreview = ref('')
 const uploading = ref(false)
+const uploadText = ref('') // 分片上传进度提示，如「上传中 12/40」
 const step = ref<'pick' | 'meta'>('pick')
 const playUrl = ref('')
 const coverUrl = ref('')
 
+/** 释放本地预览 blob URL，避免内存泄漏 */
+function clearPreviews() {
+  if (videoPreview.value) URL.revokeObjectURL(videoPreview.value)
+  if (coverPreview.value) URL.revokeObjectURL(coverPreview.value)
+  videoPreview.value = ''
+  coverPreview.value = ''
+}
+onBeforeUnmount(clearPreviews)
+
 function onPickVideo(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0]
   if (!f) return
+  if (f.size > MAX_VIDEO_SIZE) {
+    toast('视频不能超过 200MB', 'error')
+    return
+  }
+  if (videoPreview.value) URL.revokeObjectURL(videoPreview.value)
   videoFile.value = f
   videoPreview.value = URL.createObjectURL(f)
+  // 重新选片：作废此前可能已上传的 URL 引用，避免发布旧文件
+  playUrl.value = ''
   step.value = 'meta'
 }
 function onPickCover(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0]
   if (!f) return
+  if (coverPreview.value) URL.revokeObjectURL(coverPreview.value)
   coverFile.value = f
   coverPreview.value = URL.createObjectURL(f)
+  coverUrl.value = ''
+}
+
+/** 回到选片步骤：清空本地文件/预览/已上传引用 */
+function reselect() {
+  step.value = 'pick'
+  videoFile.value = null
+  coverFile.value = null
+  playUrl.value = ''
+  coverUrl.value = ''
+  clearPreviews()
 }
 
 async function uploadVideoOnly(): Promise<boolean> {
   if (!videoFile.value) return false
   try {
-    const res = await uploadVideoFile(videoFile.value)
+    // 分片上传：断点续传 + 并发；进度实时回显
+    const res = await uploadVideoChunked(videoFile.value, (done, total) => {
+      uploadText.value = total > 0 ? `上传中 ${done}/${total}` : '上传中…'
+    })
+    uploadText.value = ''
     playUrl.value = res.play_url || res.url
     if (coverFile.value) {
       try {
@@ -47,21 +82,25 @@ async function uploadVideoOnly(): Promise<boolean> {
     }
     return true
   } catch (e) {
+    uploadText.value = ''
     toastErr(e)
     return false
   }
 }
 
 async function publishAll() {
-  if (!title.value.trim() && !playUrl.value) return toast('请填写标题', 'error')
   uploading.value = true
-  // 若选了本地视频但尚未上传，先上传拿 URL
+  // 选了本地视频但尚未上传 → 先上传拿 URL；没有可发布资源则中止
   if (videoFile.value && !playUrl.value) {
     const ok = await uploadVideoOnly()
     if (!ok) {
       uploading.value = false
       return
     }
+  }
+  if (!playUrl.value) {
+    uploading.value = false
+    return toast('请先选择视频文件', 'error')
   }
   try {
     await publishVideo({
@@ -124,9 +163,9 @@ async function publishAll() {
         </div>
 
         <div class="actions">
-          <button class="ghost" @click="step = 'pick'; videoFile = null">重新选择</button>
+          <button class="ghost" :disabled="uploading" @click="reselect">重新选择</button>
           <button class="pub" :disabled="uploading" @click="publishAll">
-            {{ uploading ? '处理中…' : '发布' }}
+            {{ uploading ? uploadText || '处理中…' : '发布' }}
           </button>
         </div>
         <p class="hint dim">上传与发布会写入后端；若后端未配置视频静态目录，播放链接可能不可访问（界面会优雅降级）。</p>

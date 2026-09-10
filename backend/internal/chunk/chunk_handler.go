@@ -1,8 +1,8 @@
 package chunk
 
 import (
-	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -184,7 +184,8 @@ func (h *ChunkUploadHandler) UploadChunk(c *gin.Context) {
 	}
 	defer chunkFile.Close()
 
-	hash := md5.New()
+	// SHA-256：浏览器 Web Crypto 原生支持，前端无需引入第三方哈希库
+	hash := sha256.New()
 	if _, err := io.Copy(hash, chunkFile); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash chunk"})
 		return

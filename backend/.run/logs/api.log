@@ -1,0 +1,6 @@
+2026/09/09 07:26:33 INFO api 进程启动 port=9000
+2026/09/09 07:26:33 INFO pprof 已启动 addr=localhost:6060
+2026/09/09 07:26:33 notification broadcaster started, queue: notification.events
+[GIN] 2026/09/09 - 07:26:33 | 206 |  67.18ms |       127.0.0.1 | GET      "/static/videos/1/20260909/ec1a4b7700610dacea595baed38826ad.mp4"
+[GIN] 2026/09/09 - 07:26:33 | 200 |      1ms |             ::1 | GET      "/healthz"
+[GIN] 2026/09/09 - 07:26:34 | 200 |   3.85ms |             ::1 | POST     "/api/v1/notification/list"

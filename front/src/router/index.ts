@@ -1,9 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { loadTokens, hasToken } from '@/api/http'
 
-// 游客可访问的页面：登录/注册/主 Feed
-const guestOk = ['/login', '/register', '/feed']
-
 const router = createRouter({
   history: createWebHistory(),
   routes: [

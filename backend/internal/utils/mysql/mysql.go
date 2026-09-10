@@ -10,6 +10,7 @@ import (
 	"feed/backend/internal/social"
 	"feed/backend/internal/video"
 	"fmt"
+	"time"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -45,6 +46,22 @@ func NewDB(dbcfg config.Database) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 连接池调优：GORM 默认 MaxIdleConns=2，高并发下会频繁建断 MySQL 短连接，
+	// 在本机临时端口有限的环境会形成端口耗尽(TIME_WAIT 洪峰)导致连接失败。
+	// 保持常驻长连接池，消除短连接风暴；MaxOpenConns 需低于 MySQL max_connections。
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	const (
+		maxOpenConns = 100 // 上限：与 MySQL 服务端 max_connections(默认151)留出余量
+		maxIdleConns = 50  // 常驻空闲连接，吸收并发请求波动
+		maxLifetime  = time.Hour
+	)
+	sqlDB.SetMaxOpenConns(maxOpenConns)
+	sqlDB.SetMaxIdleConns(maxIdleConns)
+	sqlDB.SetConnMaxLifetime(maxLifetime)
 
 	return db, nil
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { demoGradient } from '@/api/normalize'
 
 const props = withDefaults(
@@ -19,6 +19,14 @@ const initial = computed(() => (props.name || 'U').slice(0, 1).toUpperCase())
 function onImgError() {
   imgFailed.value = true
 }
+
+// src 变化（如更换头像）时重置失败标记，允许重新加载新地址
+watch(
+  () => props.src,
+  () => {
+    imgFailed.value = false
+  },
+)
 </script>
 
 <template>

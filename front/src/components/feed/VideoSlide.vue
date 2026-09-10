@@ -12,6 +12,10 @@ const props = defineProps<{
   active: boolean
   /** Feed 层下发的全局静音态 */
   globalMuted?: boolean
+  /** 是否已关注该作者（父层维护的真实关注态） */
+  followed?: boolean
+  /** 是否展示关注按钮（自己的视频不展示） */
+  showFollow?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -117,7 +121,15 @@ function onDbl() {
         <div class="avatar-wrap" @click="emit('openAuthor')">
           <Avatar :seed="item.author.id" :name="item.author.username" :src="undefined" :size="48" />
         </div>
-        <button class="follow-btn" aria-label="关注" @click.stop="emit('toggleFollow')">+</button>
+        <button
+          v-if="showFollow"
+          class="follow-btn"
+          :class="{ on: followed }"
+          aria-label="关注"
+          @click.stop="emit('toggleFollow')"
+        >
+          {{ followed ? '✓' : '+' }}
+        </button>
       </div>
 
       <div class="rail-item">
@@ -324,6 +336,12 @@ function onDbl() {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s;
+}
+.follow-btn.on {
+  background: rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 12px;
 }
 .action {
   width: 48px;

@@ -13,7 +13,7 @@ export function feedLatest(p: LatestReq = {}) {
   })
 }
 
-/** 关注流 —— latest_time 为秒 */
+/** 关注流 —— latest_time 为毫秒 */
 export function feedFollowing(p: { limit?: number; latest_time?: number } = {}) {
   return http.post<FeedPage>('/api/v1/feed/following', {
     limit: p.limit ?? 10,
@@ -33,18 +33,6 @@ export function feedLikesCount(p: {
     body.id_before = p.id_before
   }
   return http.postPublic<FeedPage>('/api/v1/feed/likes_count', body)
-}
-
-/** 热度榜 —— 传 offset */
-export function feedPopularity(p: { limit?: number; as_of?: number; offset?: number } = {}) {
-  return http.postPublic<FeedPage>('/api/v1/feed/popularity', {
-    limit: p.limit ?? 10,
-    as_of: p.as_of ?? 0,
-    offset: p.offset ?? 0,
-    latest_popularity: 0,
-    latest_before: '0001-01-01T00:00:00Z',
-    latest_id_before: 0,
-  })
 }
 
 /** 按标签 */

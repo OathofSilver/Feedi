@@ -26,13 +26,13 @@ type Notification struct {
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
-// ListRequest 通知列表查询请求；before_time 为上一页最后一条的 created_at 秒时间戳，0 表示首页
+// ListRequest 通知列表查询请求；before_time 为上一页最后一条的 created_at 毫秒时间戳，0 表示首页
 type ListRequest struct {
 	BeforeTime int64 `json:"before_time"`
 	Limit      int   `json:"limit"`
 }
 
-// ListItem 单条通知响应（CreatedAt 转秒）
+// ListItem 单条通知响应（CreatedAt 转毫秒）
 type ListItem struct {
 	ID        uint   `json:"id"`
 	Type      Type   `json:"type"`

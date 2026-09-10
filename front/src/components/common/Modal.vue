@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount } from 'vue'
+import { watch, onBeforeUnmount } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -16,7 +16,16 @@ const emit = defineEmits<{ (e: 'close'): void }>()
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape' && props.closable) emit('close')
 }
-onMounted(() => window.addEventListener('keydown', onKey))
+
+// 仅展示期间注册全局 Esc 监听，避免多个常驻 Modal 叠加无效监听
+watch(
+  () => props.show,
+  (s) => {
+    if (s) window.addEventListener('keydown', onKey)
+    else window.removeEventListener('keydown', onKey)
+  },
+  { immediate: true },
+)
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 

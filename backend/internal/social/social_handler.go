@@ -127,12 +127,44 @@ func (h *SocialHandler) GetAllVloggers(c *gin.Context) {
 }
 
 func (h *SocialHandler) GetCounts(c *gin.Context) {
-	accountID, err := jwt.GetAccountID(c)
+	// 请求体可带 user_id 查询任意用户；缺省/body 空时统计当前登录者
+	var req SocialCountsRequest
+	_ = c.ShouldBindJSON(&req)
+
+	target := req.UserID
+	if target == 0 {
+		accountID, err := jwt.GetAccountID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		target = accountID
+	}
+	followerCount, _ := h.service.CountFollowers(c.Request.Context(), target)
+	vloggerCount, _ := h.service.CountVloggers(c.Request.Context(), target)
+	c.JSON(http.StatusOK, SocialCounts{FollowerCount: followerCount, VloggerCount: vloggerCount})
+}
+
+// IsFollowed 查询当前登录者是否已关注 vlogger_id（Profile/Feed 关注按钮初始态）
+func (h *SocialHandler) IsFollowed(c *gin.Context) {
+	var req IsFollowedRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(apierror.ClassifyHTTPStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+	if req.VloggerID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "vlogger_id is required"})
+		return
+	}
+	followerID, err := jwt.GetAccountID(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	followerCount, _ := h.service.CountFollowers(c.Request.Context(), accountID)
-	vloggerCount, _ := h.service.CountVloggers(c.Request.Context(), accountID)
-	c.JSON(http.StatusOK, SocialCounts{FollowerCount: followerCount, VloggerCount: vloggerCount})
+	followed, err := h.service.IsFollowed(c.Request.Context(), &Social{FollowerID: followerID, VloggerID: req.VloggerID})
+	if err != nil {
+		c.JSON(apierror.ClassifyHTTPStatus(err), gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, IsFollowedResponse{IsFollowing: followed})
 }

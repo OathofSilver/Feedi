@@ -67,11 +67,12 @@ func (s *Service) Notify(ctx context.Context, recipientID, actorID uint, t Type,
 }
 
 // ListByRecipient 游标分页查询某用户的倒序通知列表。
-// 返回列表与"下一页游标"（末条 CreatedAt 秒时间戳，无更多则为 0）。
+// 返回列表与"下一页游标"（末条 CreatedAt 毫秒时间戳，无更多则为 0）。
+// 游标单位统一为毫秒，与 feed/latest 及 Redis 时间线保持一致。
 func (s *Service) ListByRecipient(ctx context.Context, recipientID uint, beforeTime int64, limit int) (ListResponse, error) {
 	var before time.Time
 	if beforeTime > 0 {
-		before = time.Unix(beforeTime, 0)
+		before = time.UnixMilli(beforeTime)
 	}
 
 	items, err := s.repo.ListByRecipient(ctx, recipientID, before, limit)
@@ -89,11 +90,11 @@ func (s *Service) ListByRecipient(ctx context.Context, recipientID uint, beforeT
 			VideoID:   it.VideoID,
 			TargetID:  it.TargetID,
 			Content:   it.Content,
-			CreatedAt: it.CreatedAt.Unix(),
+			CreatedAt: it.CreatedAt.UnixMilli(),
 		})
 	}
 	if len(items) > 0 {
-		out.NextBeforeTime = items[len(items)-1].CreatedAt.Unix()
+		out.NextBeforeTime = items[len(items)-1].CreatedAt.UnixMilli()
 	}
 	return out, nil
 }

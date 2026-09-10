@@ -91,14 +91,25 @@ export function useVideoPlayer(opts: UsePlayerOptions = {}): PlayerController {
     opts.onError?.()
   }
 
+  // 具名事件处理器：保证 add/remove 引用一致，卸载时能真正移除
+  function onVideoPlay() {
+    isPlaying.value = true
+  }
+  function onVideoPause() {
+    isPlaying.value = false
+  }
+  function onVideoTimeupdate() {
+    syncState()
+  }
+
   onMounted(() => {
     const v = videoRef.value
     if (v) {
       v.muted = isMuted.value
       v.addEventListener('error', onError)
-      v.addEventListener('play', () => (isPlaying.value = true))
-      v.addEventListener('pause', () => (isPlaying.value = false))
-      v.addEventListener('timeupdate', syncState)
+      v.addEventListener('play', onVideoPlay)
+      v.addEventListener('pause', onVideoPause)
+      v.addEventListener('timeupdate', onVideoTimeupdate)
     }
   })
 
@@ -106,9 +117,9 @@ export function useVideoPlayer(opts: UsePlayerOptions = {}): PlayerController {
     const v = videoRef.value
     if (v) {
       v.removeEventListener('error', onError)
-      v.removeEventListener('play', () => (isPlaying.value = true))
-      v.removeEventListener('pause', () => (isPlaying.value = false))
-      v.removeEventListener('timeupdate', syncState)
+      v.removeEventListener('play', onVideoPlay)
+      v.removeEventListener('pause', onVideoPause)
+      v.removeEventListener('timeupdate', onVideoTimeupdate)
       v.pause()
     }
   })

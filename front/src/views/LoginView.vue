@@ -15,6 +15,13 @@ const confirm = ref('')
 const loading = ref(false)
 const showPwd = ref(false)
 
+/** 仅允许站内路径作为登录后跳转目标，防 open-redirect / 异常 URL */
+function safeRedirect(raw: unknown): string {
+  const p = typeof raw === 'string' ? raw : ''
+  if (p.startsWith('/') && !p.startsWith('//') && !/^[a-z][a-z0-9+.-]*:/i.test(p)) return p
+  return '/feed'
+}
+
 async function submit() {
   const u = username.value.trim()
   const p = password.value
@@ -31,8 +38,7 @@ async function submit() {
     if (isRegister.value) await auth.doRegister(u, p)
     else await auth.doLogin(u, p)
     toast(isRegister.value ? '注册成功' : '登录成功', 'success')
-    const redirect = (route.query.redirect as string) || '/feed'
-    router.replace(redirect)
+    router.replace(safeRedirect(route.query.redirect))
   } catch (e) {
     toastErr(e)
   } finally {

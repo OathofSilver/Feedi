@@ -1,6 +1,7 @@
 import { http, sseConnect } from './http'
 import type { NotifPage } from './types'
 
+/** 通知列表，before_time 毫秒游标（0 = 首页） */
 export function listNotifications(before_time = 0, limit = 30) {
   return http.post<NotifPage>('/api/v1/notification/list', { before_time, limit })
 }

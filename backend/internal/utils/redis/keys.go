@@ -36,7 +36,7 @@ const (
 	// ---------- Feed 时间线 ----------
 	// FeedGlobalTimelineKey 全局时间线 ZSET（member=videoID, score=发布时间毫秒）
 	FeedGlobalTimelineKey = "feed:global_timeline"
-	// FeedFollowingFmt 关注流响应缓存，参数：limit, accountID, before(秒时间戳, 0 表示首页)
+	// FeedFollowingFmt 关注流响应缓存，参数：limit, accountID, before(毫秒时间戳, 0 表示首页)
 	FeedFollowingFmt = "feed:listByFollowing:limit=%d:accountID=%d:before=%d"
 	// FeedFollowingPatternFmt 关注流批量失效的 SCAN pattern，参数：accountID。
 	// 与 FeedFollowingFmt 强耦合，格式变更时必须同步修改

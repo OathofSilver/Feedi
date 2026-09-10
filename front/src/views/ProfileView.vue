@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { Account, Video, FollowerItem } from '@/api/types'
 import { accountInfo, uploadAvatar, updateProfile } from '@/api/account'
 import { myLikedVideos } from '@/api/like'
-import { socialCounts, follow, unfollow, myFollowers, myVloggers } from '@/api/social'
+import { socialCounts, follow, unfollow, myFollowers, myVloggers, isFollowing } from '@/api/social'
 import { demoGradient } from '@/api/normalize'
 import { useAuthStore } from '@/stores/auth'
 import { toast, toastErr } from '@/stores/toast'
@@ -22,7 +22,7 @@ const acc = ref<Account | null>(null)
 const followers = ref<FollowerItem[]>([])
 const vloggers = ref<FollowerItem[]>([])
 const following = ref<FollowerItem[]>([])
-const counts = ref({ follower_count: 0, vlogger_count: 0 })
+const counts = ref<{ follower_count: number; vlogger_count: number } | null>(null)
 const likedVideos = ref<Video[]>([])
 const tab = ref<'liked' | 'followers' | 'following'>('liked')
 const coverFailed = ref<Record<number, boolean>>({})
@@ -34,17 +34,29 @@ const bioDraft = ref('')
 const avatarInput = ref<HTMLInputElement | null>(null)
 
 async function load() {
+  // 计数/关系数据必须按「被查看用户」拉取，避免串成 viewer 自己的数据
   try {
     const a = await accountInfo(uid.value)
     acc.value = a
   } catch (e) {
     toastErr(e)
   }
+  // 关注态：他人主页查询当前登录者与 ta 的关系；自己的主页恒为 false
+  if (auth.isAuthed && !isOwn.value) {
+    try {
+      const r = await isFollowing(uid.value)
+      followedMe.value = r.is_following
+    } catch {
+      followedMe.value = false
+    }
+  } else {
+    followedMe.value = false
+  }
+  // 计数（登录用户可查任意用户；游客取不到则保持 null，UI 显示占位）
   try {
-    const c = await socialCounts()
-    counts.value = c
+    counts.value = await socialCounts(uid.value)
   } catch {
-    /* own only */
+    counts.value = null
   }
 }
 
@@ -54,15 +66,22 @@ async function toggleFollowMe() {
     return
   }
   const target = uid.value
-  followedMe.value = !followedMe.value
-  counts.value.follower_count += followedMe.value ? 1 : -1
+  const prev = followedMe.value
+  // 乐观更新
+  followedMe.value = !prev
+  if (counts.value) {
+    counts.value = { ...counts.value, follower_count: counts.value.follower_count + (followedMe.value ? 1 : -1) }
+  }
   try {
-    if (followedMe.value) await follow(target)
+    if (!prev) await follow(target)
     else await unfollow(target)
     toast(followedMe.value ? '关注成功' : '已取消关注', followedMe.value ? 'success' : 'info')
   } catch (e) {
-    followedMe.value = !followedMe.value
-    counts.value.follower_count -= followedMe.value ? 1 : -1
+    // 回滚：按 prev 方向撤销（勿用翻转后的值计算，否则符号反）
+    followedMe.value = prev
+    if (counts.value) {
+      counts.value = { ...counts.value, follower_count: counts.value.follower_count + (prev ? 1 : -1) }
+    }
     toastErr(e)
   }
 }
@@ -78,15 +97,19 @@ async function loadLiked() {
 
 async function pickTab(t: typeof tab.value) {
   tab.value = t
-  if (t === 'followers' && !followers.value.length) {
+  if (t === 'followers') {
+    followers.value = []
+    if (!auth.isAuthed) return
     try {
-      followers.value = (await myFollowers()).followers
+      followers.value = (await myFollowers(uid.value)).followers
     } catch {
       /* ignore */
     }
   } else if (t === 'following') {
+    following.value = []
+    if (!auth.isAuthed) return
     try {
-      const v = (await myVloggers()).vloggers
+      const v = (await myVloggers(uid.value)).vloggers
       vloggers.value = v
       following.value = v
     } catch {
@@ -112,12 +135,19 @@ async function saveBio() {
     toastErr(e)
   }
 }
+/** bio 编辑框回车：跳过中文输入法选词阶段的 Enter */
+function onBioEnter(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return
+  saveBio()
+}
 async function onAvatarPick(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
   try {
     const res = await uploadAvatar(file)
     if (acc.value) acc.value.avatar_url = res.url
+    // 同步会话资料，顶栏头像立即生效
+    auth.setProfileAvatar(res.url)
     toast('头像已更新', 'success')
   } catch (err) {
     toastErr(err)
@@ -132,6 +162,14 @@ watch(uid, () => {
   likedVideos.value = []
   tab.value = 'liked'
   followedMe.value = false
+  counts.value = null
+  // 无有效目标用户（未登录且无 id 参数）→ 引导登录
+  if (uid.value <= 0) {
+    if (!auth.isAuthed) {
+      router.replace({ name: 'login', query: { redirect: route.fullPath } })
+    }
+    return
+  }
   load()
   loadLiked()
 }, { immediate: true })
@@ -163,7 +201,7 @@ watch(uid, () => {
         <h1 class="name">@{{ acc.username }}</h1>
         <p class="bio">
           <template v-if="editingBio">
-            <input v-model="bioDraft" class="bio-in" placeholder="写点什么介绍自己…" @keyup.enter="saveBio" />
+            <input v-model="bioDraft" class="bio-in" placeholder="写点什么介绍自己…" @keyup.enter="onBioEnter" />
             <button class="bio-save" @click="saveBio">保存</button>
           </template>
           <template v-else>
@@ -174,10 +212,10 @@ watch(uid, () => {
 
         <div class="stats">
           <div class="stat">
-            <b>{{ counts.vlogger_count }}</b><span>关注</span>
+            <b>{{ counts?.vlogger_count ?? '—' }}</b><span>关注</span>
           </div>
           <div class="stat">
-            <b>{{ counts.follower_count }}</b><span>粉丝</span>
+            <b>{{ counts?.follower_count ?? '—' }}</b><span>粉丝</span>
           </div>
           <div class="stat">
             <b>{{ isOwn ? likedVideos.length : '-' }}</b><span>喜欢</span>
@@ -221,7 +259,8 @@ watch(uid, () => {
 
         <!-- 粉丝 -->
         <template v-else-if="tab === 'followers'">
-          <div v-if="followers.length" class="list">
+          <div v-if="!auth.isAuthed" class="tip dim">登录后查看粉丝</div>
+          <div v-else-if="followers.length" class="list">
             <div v-for="f in followers" :key="f.id" class="row">
               <router-link :to="`/profile/${f.id}`" class="ri">
                 <Avatar :seed="f.id" :name="f.username" :src="f.avatar_url || undefined" :size="44" />
@@ -237,7 +276,8 @@ watch(uid, () => {
 
         <!-- 关注 -->
         <template v-else>
-          <div v-if="vloggers.length" class="list">
+          <div v-if="!auth.isAuthed" class="tip dim">登录后查看关注</div>
+          <div v-else-if="vloggers.length" class="list">
             <div v-for="f in vloggers" :key="f.id" class="row">
               <router-link :to="`/profile/${f.id}`" class="ri">
                 <Avatar :seed="f.id" :name="f.username" :src="f.avatar_url || undefined" :size="44" />

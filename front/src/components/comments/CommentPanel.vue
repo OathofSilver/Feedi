@@ -87,6 +87,12 @@ function openCommentsRequireLogin() {
   }
   return true
 }
+
+/** 输入框回车：跳过中文输入法选词阶段的 Enter（isComposing/keyCode 229） */
+function onInputEnter(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return
+  if (openCommentsRequireLogin()) send()
+}
 </script>
 
 <template>
@@ -121,7 +127,7 @@ function openCommentsRequireLogin() {
             <input
               v-model="text"
               :placeholder="auth.isAuthed ? '友善评论，理性发言' : '登录后参与评论'"
-              @keyup.enter="openCommentsRequireLogin() && send()"
+              @keyup.enter="onInputEnter"
             />
             <button
               class="send"

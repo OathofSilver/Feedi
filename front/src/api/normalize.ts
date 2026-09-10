@@ -1,5 +1,4 @@
 // 时间/资源归一化工具
-import type { FeedVideoItem } from './types'
 
 /**
  * 智能时间格式化：兼容 Unix 秒 / Unix 毫秒 / RFC3339 字符串。
@@ -45,7 +44,6 @@ export function fmtCount(n: number): string {
 }
 
 // 内置演示封面（渐变色块，无真实媒体时兜底，避免白屏）
-const FALLBACK_COVER = ''
 const DEMO_GRADIENTS = [
   'linear-gradient(135deg,#fe2c55 0%,#fe5f3c 100%)',
   'linear-gradient(135deg,#25f4ee 0%,#1c8fff 100%)',
@@ -57,19 +55,4 @@ const DEMO_GRADIENTS = [
 export function demoGradient(seed: number): string {
   const i = Math.abs(seed) % DEMO_GRADIENTS.length
   return DEMO_GRADIENTS[i]
-}
-
-/**
- * 安全的媒体 URL：为空返回空；后端仅注册 /static/avatars，
- * 其它 /static 资源可能 404，这里统一判断 —— 但保留 URL 让 <img>/<video>
- * 自行 onerror 兜底。返回原始 URL。
- */
-export function safeMediaUrl(u?: string | null): string {
-  if (!u) return ''
-  return u
-}
-
-/** 视频标题缺省文案 */
-export function titleFallback(v: Pick<FeedVideoItem, 'id' | 'title'>): string {
-  return v.title || `@${v.author?.username ?? 'unknown'} 的视频`
 }

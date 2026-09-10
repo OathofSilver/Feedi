@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"feed/backend/internal/account"
+	"feed/backend/internal/chunk"
 	"feed/backend/internal/comment"
 	"feed/backend/internal/config"
 	"feed/backend/internal/feed"
@@ -255,8 +256,11 @@ func newRouter(
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
-	// 头像等静态资源
-	r.Static("/static/avatars", "uploads/avatars")
+	// 头像/视频/封面等静态资源（上传目录统一在 .run/uploads 下）
+	r.Static("/static", ".run/uploads")
+
+	// 分片上传 Handler（会话存 Redis）
+	chunkHandler := chunk.NewChunkUploadHandler(cache)
 
 	// 健康检查
 	r.GET("/healthz", func(c *gin.Context) {
@@ -311,6 +315,12 @@ func newRouter(
 			authed.POST("/cover", videoHandler.UploadCover)
 			authed.POST("/delete", videoHandler.DeleteVideo)
 			authed.POST("/likes_count/update", videoHandler.UpdateLikesCount)
+
+			// 分片上传：init -> 逐片 chunk -> status(断点续传) -> complete
+			authed.POST("/upload/init", chunkHandler.InitChunkUpload)
+			authed.POST("/upload/chunk", chunkHandler.UploadChunk)
+			authed.POST("/upload/status", chunkHandler.ChunkStatus)
+			authed.POST("/upload/complete", chunkHandler.CompleteChunkUpload)
 		}
 	}
 
@@ -344,6 +354,7 @@ func newRouter(
 		socialGroup.POST("/followers", socialHandler.GetAllFollowers)
 		socialGroup.POST("/vloggers", socialHandler.GetAllVloggers)
 		socialGroup.POST("/counts", socialHandler.GetCounts)
+		socialGroup.POST("/is_following", socialHandler.IsFollowed)
 	}
 
 	// ---------- 通知（需登录） ----------

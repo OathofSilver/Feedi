@@ -22,12 +22,31 @@ export const useAuthStore = defineStore('auth', () => {
       id: res.account_id,
       username: res.username,
     }
+    // 登录后拉取完整资料（含头像），失败不影响登录主流程
+    await refreshProfile()
     return res
   }
 
   async function doRegister(u: string, p: string) {
     await accountApi.register({ username: u, password: p })
     return doLogin(u, p)
+  }
+
+  /** 拉取当前账号完整资料到 profile（用于顶栏头像等展示） */
+  async function refreshProfile() {
+    if (!accountId.value) return
+    try {
+      const p = await accountApi.accountInfo(accountId.value)
+      profile.value = p
+      username.value = p.username || username.value
+    } catch {
+      /* 网络异常静默，保留已有字段 */
+    }
+  }
+
+  /** 头像更新后同步到会话 profile（上传完成回写） */
+  function setProfileAvatar(url: string) {
+    if (profile.value) profile.value.avatar_url = url
   }
 
   function doLogout() {
@@ -47,5 +66,16 @@ export const useAuthStore = defineStore('auth', () => {
     if (profile.value) profile.value.username = u
   }
 
-  return { isAuthed, accountId, username, profile, doLogin, doRegister, doLogout, setUsername }
+  return {
+    isAuthed,
+    accountId,
+    username,
+    profile,
+    doLogin,
+    doRegister,
+    doLogout,
+    setUsername,
+    refreshProfile,
+    setProfileAvatar,
+  }
 })

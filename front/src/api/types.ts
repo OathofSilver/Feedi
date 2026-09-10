@@ -64,6 +64,7 @@ export interface NotificationItem {
   video_id: number
   target_id: number
   content: string
+  /** 毫秒级 Unix 时间戳 */
   created_at: number
 }
 
@@ -77,9 +78,8 @@ export interface LoginResp {
 export interface FeedPage {
   video_list: FeedVideoItem[]
   has_more: boolean
-  // latest (ms cursor)
+  // 时间游标统一毫秒（latest / following 一致）
   next_time?: number
-  // following (sec cursor)
   // likes_count composite
   next_likes_count_before?: number
   next_id_before?: number
@@ -87,5 +87,6 @@ export interface FeedPage {
 
 export interface NotifPage {
   notifications: NotificationItem[]
+  /** 下一页游标，毫秒级 Unix 时间戳，0 表示无更多 */
   next_before_time: number
 }

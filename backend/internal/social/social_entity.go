@@ -36,6 +36,21 @@ type SocialCounts struct {
 	VloggerCount  int64 `json:"vlogger_count"`
 }
 
+// SocialCountsRequest counts 查询条件：user_id 缺省时按当前登录者统计
+type SocialCountsRequest struct {
+	UserID uint `json:"user_id"`
+}
+
+// IsFollowedRequest 查询当前登录者是否已关注 vlogger_id
+type IsFollowedRequest struct {
+	VloggerID uint `json:"vlogger_id"`
+}
+
+// IsFollowedResponse 关注关系查询结果
+type IsFollowedResponse struct {
+	IsFollowing bool `json:"is_following"`
+}
+
 type GetAllVloggersRequest struct {
 	FollowerID uint `json:"follower_id"`
 }
