@@ -239,16 +239,16 @@ func getIntersectionNode(headA, headB *ListNode) *ListNode {
 // 	return pre
 // }
 
-func reverseList(head *ListNode) *ListNode {
-	// 递归法
-	if head == nil || head.Next == nil{
-		return head
-	}
-	newHead := reverseList(head.Next)
-    head.Next.Next = head
-    head.Next = nil
-    return newHead
-}
+// func reverseList(head *ListNode) *ListNode {
+// 	// 递归法
+// 	if head == nil || head.Next == nil{
+// 		return head
+// 	}
+// 	newHead := reverseList(head.Next)
+//     head.Next.Next = head
+//     head.Next = nil
+//     return newHead
+// }
 
 func isPalindrome(head *ListNode) bool {
     // 数组辅助 
@@ -269,5 +269,109 @@ func isPalindrome(head *ListNode) bool {
 
 
 func isPalindrome(head *ListNode) bool {
-	
+	// 快慢指针 + 反转后半部分
+	if head == nil || head.Next  == nil {
+		return true
+	}
+	// 1.快慢指针找中点
+	slow,fast := head,head
+	for fast.Next != nil && fast.Next.Next != nil {
+		slow = slow.Next
+		fast = fast.Next.Next
+	}
+	// 反转后半部分
+	reversehead := reverseList(slow.Next)
+	p1, p2 := head, reversehead
+	for p1 != nil && p2 != nil {
+		if p1.Val != p2.Val {
+			return false
+		}
+		p1 = p1.Next
+		p2 = p2.Next
+	}
+	return true
+}
+
+func reverseList(node *ListNode) *ListNode {
+	var pre *ListNode
+	cur := node 
+	for cur != nil {
+		nextnode := cur.Next
+		cur.Next = pre
+		pre = cur
+		cur = nextnode
+	}
+	return pre
+}
+
+
+
+
+func mergeTwoLists(list1 *ListNode, list2 *ListNode) *ListNode {
+	// 数组辅助法 o(n)
+	array := make([]int, 0)
+	p := list1
+	for p != nil {
+		array = append(array, p.Val)
+		p = p.Next // 移动指针
+	}
+	p = list2
+	for p != nil {
+		array = append(array, p.Val)
+		p = p.Next // 移动指针
+	}
+	sort.Ints(array)
+
+	dummy := &ListNode{}
+	cur := dummy
+	for _, v := range array {
+		node := &ListNode{Val: v}
+		cur.Next = node
+		cur = node
+	}
+	return dummy.Next // 返回真正头节点
+}
+
+func mergeTwoLists(list1 *ListNode, list2 *ListNode) *ListNode {
+	// 递归法
+	if list1 == nil {
+		return list2
+	}
+	if list2 == nil {
+		return list1
+	}
+	if list1.Val <= list2.Val {
+		list1.Next = mergeTwoLists(list1.Next, list2)
+		return list1
+	} else {
+		list2.Next = mergeTwoLists(list1, list2.Next)
+		return list2
+	}
+}
+
+func lengthOfLongestSubstring(s string) int {
+	// 双指针 + 哈希表
+	left, right := 0, 0
+	window := make(map[byte]bool)
+	res := 0
+
+	for right < len(s) {
+		c := s[right]
+
+		// 如果当前字符已经在窗口里，就不断移动左指针，直到重复字符被移出
+		for window[c] {
+			delete(window, s[left])
+			left++
+		}
+
+		window[c] = true
+
+		if right-left+1 > res {
+			res = right-left+1
+		}
+
+		right++
+	}
+
+	return res
 }
