@@ -180,53 +180,53 @@ func threeSum(nums []int) [][]int {
 	return res
 }
 
-func getIntersectionNode(headA, headB *ListNode) *ListNode {
-	// 哈希法
-	if headA == nil || headB == nil {
-		return nil
-	}
-	map1 := make(map[*ListNode]bool)
-	node := headA
-	for node != nil {
-		map1[node] = true
-		node = node.Next
-	}
-	node = headB
-	for node != nil {
-		if map1[node] {
-			return node
-		}
-		node = node.Next
-	}
-	return nil
-}
-
-func getIntersectionNode(headA, headB *ListNode) *ListNode {
-    // 双指针法
-	// 如果相交 a + c + b = b + c + a 路程是一样的 最后是相交点
-	// 不相交， a + b = b + a 最后 都是nil
-	if headA == nil || headB == nil {
-		return nil
-	}
-
-	pa, pb := headA, headB
-	for pa != pb {
-		if pa == nil {
-			pa = headB
-		} else {
-			pa = pa.Next
-		}
-		if pb == nil {
-			pb = headA
-		} else {
-			pb = pb.Next
-		}
-	}
-	return pa
-}
+//func getIntersectionNode(headA, headB *ListNode) *ListNode {
+//	// 哈希法
+//	if headA == nil || headB == nil {
+//		return nil
+//	}
+//	map1 := make(map[*ListNode]bool)
+//	node := headA
+//	for node != nil {
+//		map1[node] = true
+//		node = node.Next
+//	}
+//	node = headB
+//	for node != nil {
+//		if map1[node] {
+//			return node
+//		}
+//		node = node.Next
+//	}
+//	return nil
+//}
+//
+//func getIntersectionNode(headA, headB *ListNode) *ListNode {
+//    // 双指针法
+//	// 如果相交 a + c + b = b + c + a 路程是一样的 最后是相交点
+//	// 不相交， a + b = b + a 最后 都是nil
+//	if headA == nil || headB == nil {
+//		return nil
+//	}
+//
+//	pa, pb := headA, headB
+//	for pa != pb {
+//		if pa == nil {
+//			pa = headB
+//		} else {
+//			pa = pa.Next
+//		}
+//		if pb == nil {
+//			pb = headA
+//		} else {
+//			pb = pb.Next
+//		}
+//	}
+//	return pa
+//}
 
 // func reverseList(head *ListNode) *ListNode {
-// 	// 双指针 
+// 	// 双指针
 // 	// `pre` 前一个节点，`cur` 当前节点，`nextTemp`保存下一个节点
 // 	var pre *ListNode
 //     cur := head
@@ -250,51 +250,51 @@ func getIntersectionNode(headA, headB *ListNode) *ListNode {
 //     return newHead
 // }
 
-func isPalindrome(head *ListNode) bool {
-    // 数组辅助 
-	// 数组 双指针
-	p := head 
-	array := make([]int,0)
-	for p != nil {
-		array = append(array, p.Val)
-	}
-	left, right := 0, len(array) - 1
-	for left < right {
-		if array[left] != array[right] {
-			return false
-		}
-	}
-	return true
-}
-
-
-func isPalindrome(head *ListNode) bool {
-	// 快慢指针 + 反转后半部分
-	if head == nil || head.Next  == nil {
-		return true
-	}
-	// 1.快慢指针找中点
-	slow,fast := head,head
-	for fast.Next != nil && fast.Next.Next != nil {
-		slow = slow.Next
-		fast = fast.Next.Next
-	}
-	// 反转后半部分
-	reversehead := reverseList(slow.Next)
-	p1, p2 := head, reversehead
-	for p1 != nil && p2 != nil {
-		if p1.Val != p2.Val {
-			return false
-		}
-		p1 = p1.Next
-		p2 = p2.Next
-	}
-	return true
-}
+//func isPalindrome(head *ListNode) bool {
+//    // 数组辅助
+//	// 数组 双指针
+//	p := head
+//	array := make([]int,0)
+//	for p != nil {
+//		array = append(array, p.Val)
+//	}
+//	left, right := 0, len(array) - 1
+//	for left < right {
+//		if array[left] != array[right] {
+//			return false
+//		}
+//	}
+//	return true
+//}
+//
+//
+//func isPalindrome(head *ListNode) bool {
+//	// 快慢指针 + 反转后半部分
+//	if head == nil || head.Next  == nil {
+//		return true
+//	}
+//	// 1.快慢指针找中点
+//	slow,fast := head,head
+//	for fast.Next != nil && fast.Next.Next != nil {
+//		slow = slow.Next
+//		fast = fast.Next.Next
+//	}
+//	// 反转后半部分
+//	reversehead := reverseList(slow.Next)
+//	p1, p2 := head, reversehead
+//	for p1 != nil && p2 != nil {
+//		if p1.Val != p2.Val {
+//			return false
+//		}
+//		p1 = p1.Next
+//		p2 = p2.Next
+//	}
+//	return true
+//}
 
 func reverseList(node *ListNode) *ListNode {
 	var pre *ListNode
-	cur := node 
+	cur := node
 	for cur != nil {
 		nextnode := cur.Next
 		cur.Next = pre
@@ -304,50 +304,47 @@ func reverseList(node *ListNode) *ListNode {
 	return pre
 }
 
-
-
-
-func mergeTwoLists(list1 *ListNode, list2 *ListNode) *ListNode {
-	// 数组辅助法 o(n)
-	array := make([]int, 0)
-	p := list1
-	for p != nil {
-		array = append(array, p.Val)
-		p = p.Next // 移动指针
-	}
-	p = list2
-	for p != nil {
-		array = append(array, p.Val)
-		p = p.Next // 移动指针
-	}
-	sort.Ints(array)
-
-	dummy := &ListNode{}
-	cur := dummy
-	for _, v := range array {
-		node := &ListNode{Val: v}
-		cur.Next = node
-		cur = node
-	}
-	return dummy.Next // 返回真正头节点
-}
-
-func mergeTwoLists(list1 *ListNode, list2 *ListNode) *ListNode {
-	// 递归法
-	if list1 == nil {
-		return list2
-	}
-	if list2 == nil {
-		return list1
-	}
-	if list1.Val <= list2.Val {
-		list1.Next = mergeTwoLists(list1.Next, list2)
-		return list1
-	} else {
-		list2.Next = mergeTwoLists(list1, list2.Next)
-		return list2
-	}
-}
+//func mergeTwoLists(list1 *ListNode, list2 *ListNode) *ListNode {
+//	// 数组辅助法 o(n)
+//	array := make([]int, 0)
+//	p := list1
+//	for p != nil {
+//		array = append(array, p.Val)
+//		p = p.Next // 移动指针
+//	}
+//	p = list2
+//	for p != nil {
+//		array = append(array, p.Val)
+//		p = p.Next // 移动指针
+//	}
+//	sort.Ints(array)
+//
+//	dummy := &ListNode{}
+//	cur := dummy
+//	for _, v := range array {
+//		node := &ListNode{Val: v}
+//		cur.Next = node
+//		cur = node
+//	}
+//	return dummy.Next // 返回真正头节点
+//}
+//
+//func mergeTwoLists(list1 *ListNode, list2 *ListNode) *ListNode {
+//	// 递归法
+//	if list1 == nil {
+//		return list2
+//	}
+//	if list2 == nil {
+//		return list1
+//	}
+//	if list1.Val <= list2.Val {
+//		list1.Next = mergeTwoLists(list1.Next, list2)
+//		return list1
+//	} else {
+//		list2.Next = mergeTwoLists(list1, list2.Next)
+//		return list2
+//	}
+//}
 
 func lengthOfLongestSubstring(s string) int {
 	// 双指针 + 哈希表
@@ -367,7 +364,7 @@ func lengthOfLongestSubstring(s string) int {
 		window[c] = true
 
 		if right-left+1 > res {
-			res = right-left+1
+			res = right - left + 1
 		}
 
 		right++

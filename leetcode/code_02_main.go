@@ -94,3 +94,43 @@ func swapPairs(head *ListNode) *ListNode {
 	}
 	return head
 }
+
+func setZeroes(matrix [][]int) {
+	// O (m+n) 空间
+	if len(matrix) == 0 {
+		return
+	}
+	m, n := len(matrix), len(matrix[0])
+	zeroRow := make([]bool, m)
+	zeroCol := make([]bool, n)
+	//第一轮：标记哪些行、列需要置零
+	for i := 0; i < m; i++ {
+		for j := 0; j < n; j++ {
+			if matrix[i][j] == 0 {
+				zeroRow[i] = true
+				zeroCol[j] = true
+			}
+		}
+	}
+	//第二轮：根据标记原地置零
+	for i := 0; i < m; i++ {
+		for j := 0; j < n; j++ {
+			if zeroRow[i] || zeroCol[j] {
+				matrix[i][j] = 0
+			}
+		}
+	}
+}
+
+//func spiralOrder(matrix [][]int) []int {
+//	// 遍历第0行，删除最后一列，旋转顺时针90度
+//	res := make([]int, 0)
+//	for len(matrix) > 0 {
+//		// 记录第0行的全部元素
+//		for i := 0; i < len(matrix[0]); i++ {
+//			res = append(res, matrix[0][i])
+//		}
+//		//删除最后一列
+//
+//	}
+//}
