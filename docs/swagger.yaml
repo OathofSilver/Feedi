@@ -1,0 +1,1259 @@
+openapi: 3.0.3
+info:
+  title: feed API
+  description: |
+    短视频社区后端 HTTP API 契约，与源码（`backend/internal/*`）对齐。
+
+    技术栈：Go + Gin + MySQL + Redis + RabbitMQ。所有业务接口挂载在 `/api/v1` 前缀下。
+
+    ## 已知联调注意点
+    1. **`latest_time` 单位不统一**：`/feed/latest` 为 Unix **毫秒**，`/feed/following` 为 Unix **秒**，游标请按接口各自响应值回填。
+    2. **时间输出格式不一致**：Feed 列表条目 `create_time` 为 Unix 秒；Video / Comment 实体时间为 RFC3339 字符串。
+    3. **视频/封面上传 URL 暂不可访问**：上传返回 `/static/videos|covers/...`，服务当前仅注册 `/static/avatars` 静态路由，其余前缀会 404。
+    4. **重复操作返回 500**：重复点赞、未点赞取消、重复关注等当前走 `500` 而非 `4xx`，前端建议透传 `error` 字段文案。
+    5. **通知流事件无内容**：SSE `data` 仅含 `notification_id`，展示需二次拉取 `/notification/list`。
+    6. **关注流有缓存延迟**：关注流结果有最长 24h 响应缓存，新视频可能延迟出现。
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:9000
+    description: 本地开发环境（端口由 configs/config.yaml server.port 决定）
+
+tags:
+  - name: account
+    description: 账号注册/登录/资料
+  - name: feed
+    description: Feed 流列表（游客可访问，带 token 返回个性化状态）
+  - name: video
+    description: 视频发布/上传/详情/删除
+  - name: like
+    description: 点赞相关
+  - name: comment
+    description: 评论相关
+  - name: social
+    description: 社交关注
+  - name: notification
+    description: 通知（同步落库 + SSE 实时推送）
+  - name: system
+    description: 健康检查等
+
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      summary: 健康检查
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ==================== 账号 ====================
+  /api/v1/account/register:
+    post:
+      tags: [account]
+      summary: 注册
+      description: 公开接口。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: alice
+                password:
+                  type: string
+                  example: secret123
+      responses:
+        '200':
+          $ref: '#/components/responses/MessageOK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/account/login:
+    post:
+      tags: [account]
+      summary: 登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: alice
+                password:
+                  type: string
+                  example: secret123
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: access token（JWT，HS256，默认 24h）
+                  refresh_token:
+                    type: string
+                    description: 刷新令牌（opaque，存 Redis，默认 7 天）
+                  account_id:
+                    type: integer
+                    example: 1
+                  username:
+                    type: string
+                    example: alice
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/account/refresh:
+    post:
+      tags: [account]
+      summary: 刷新 access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: 换发成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  account_id:
+                    type: integer
+                  username:
+                    type: string
+        '401':
+          description: 无效的 refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: invalid refresh token
+
+  /api/v1/account/info:
+    post:
+      tags: [account]
+      summary: 按 ID 查询账号
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: 账号信息（不含密码）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/account/username:
+    post:
+      tags: [account]
+      summary: 按用户名查询账号
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username:
+                  type: string
+                  example: alice
+      responses:
+        '200':
+          description: 账号摘要
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  username:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/account/logout:
+    post:
+      tags: [account]
+      summary: 登出
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          $ref: '#/components/responses/MessageOK'
+
+  /api/v1/account/rename:
+    post:
+      tags: [account]
+      summary: 改名
+      description: 改名会换发新 token 并使旧 token 失效，前端需更新本地缓存。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_username]
+              properties:
+                new_username:
+                  type: string
+                  example: alice_new
+      responses:
+        '200':
+          description: 返回新 access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+  /api/v1/account/password:
+    post:
+      tags: [account]
+      summary: 修改密码
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, old_password, new_password]
+              properties:
+                username:
+                  type: string
+                old_password:
+                  type: string
+                new_password:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/MessageOK'
+
+  /api/v1/account/profile:
+    post:
+      tags: [account]
+      summary: 更新个人资料
+      description: '`avatar_url` / `bio` 至少填一项，不填的字段不更新；两项都为空返回 400。'
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                avatar_url:
+                  type: string
+                bio:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/MessageOK'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/account/avatar:
+    post:
+      tags: [account]
+      summary: 上传头像
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: ≤ 5MB，允许 jpg/jpeg/png/webp/gif
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: /static/avatars/avatar_1_1700000000000.jpg
+                  message:
+                    type: string
+
+  # ==================== Feed 流 ====================
+  /api/v1/feed/latest:
+    post:
+      tags: [feed]
+      summary: 最新视频（时间线，冷热分离+游标）
+      description: |
+        数据来自 Redis 全局时间线 ZSet（保留最新约 1000 条）+ MySQL 冷数据拼接。
+        `latest_time` 为 Unix **毫秒**；`0` 表示第一页，翻页传上一响应 `next_time`。
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  description: 默认 10，上限 50；<=0 或 >50 归为 10
+                  example: 20
+                latest_time:
+                  type: integer
+                  format: int64
+                  description: 游标，Unix 毫秒
+                  example: 1700000000000
+      responses:
+        '200':
+          description: 视频列表与游标
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/FeedListBase'
+                  - type: object
+                    properties:
+                      next_time:
+                        type: integer
+                        format: int64
+                        description: 下一页游标（Unix 毫秒）
+
+  /api/v1/feed/likes_count:
+    post:
+      tags: [feed]
+      summary: 按点赞数热门
+      description: 第一页不带游标；翻页时 `likes_count_before` / `id_before` 必须成对传，否则 400。
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  example: 20
+                likes_count_before:
+                  type: integer
+                  example: 10
+                id_before:
+                  type: integer
+                  example: 33
+      responses:
+        '200':
+          description: 视频列表与复合游标
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/FeedListBase'
+                  - type: object
+                    properties:
+                      next_likes_count_before:
+                        type: integer
+                      next_id_before:
+                        type: integer
+
+  /api/v1/feed/following:
+    post:
+      tags: [feed]
+      summary: 关注流（关注的人发布的视频）
+      description: ⚠️ `latest_time` 为 Unix **秒**（与 /feed/latest 的毫秒不同）。结果有最长 24h 响应缓存，新视频可能延迟出现。
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  example: 20
+                latest_time:
+                  type: integer
+                  format: int64
+                  description: 游标，Unix 秒；0 表示第一页
+                  example: 1700000000
+      responses:
+        '200':
+          description: 视频列表与游标
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/FeedListBase'
+                  - type: object
+                    properties:
+                      next_time:
+                        type: integer
+                        format: int64
+                        description: 下一页游标（Unix 秒）
+
+  /api/v1/feed/popularity:
+    post:
+      tags: [feed]
+      summary: 热度推荐榜（近 1 小时累计热度）
+      description: |
+        - 第一页：`offset=0, as_of=0`。
+        - 命中 Redis：翻页用 `as_of`（不变）+ `next_offset`。
+        - 未命中/降级 MySQL：`as_of=0, next_offset=0`，用 `next_latest_*` 复合游标翻页（三者需成对携带）。
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  example: 20
+                as_of:
+                  type: integer
+                  format: int64
+                  description: 榜单快照时间（Unix 秒），翻页保持不变以保证榜单一致
+                offset:
+                  type: integer
+                  description: 本次跳过的条数
+                latest_popularity:
+                  type: integer
+                  description: MySQL 兜底复合游标
+                latest_before:
+                  type: string
+                  format: date-time
+                  description: MySQL 兜底复合游标（RFC3339）
+                latest_id_before:
+                  type: integer
+      responses:
+        '200':
+          description: 榜单与游标
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/FeedListBase'
+                  - type: object
+                    properties:
+                      as_of:
+                        type: integer
+                        format: int64
+                      next_offset:
+                        type: integer
+                      next_latest_popularity:
+                        type: integer
+                      next_latest_before:
+                        type: string
+                        format: date-time
+                      next_latest_id_before:
+                        type: integer
+
+  /api/v1/feed/tag:
+    post:
+      tags: [feed]
+      summary: 按标签查询
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag_name]
+              properties:
+                tag_name:
+                  type: string
+                  example: 旅行
+                limit:
+                  type: integer
+                  example: 20
+      responses:
+        '200':
+          description: 视频列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  video_list:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FeedVideoItem'
+
+  # ==================== 视频 ====================
+  /api/v1/video/publish:
+    post:
+      tags: [video]
+      summary: 发布视频
+      description: 发布会写 outbox 事务消息，异步投递到全局时间线 / 标签索引。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, play_url, cover_url]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                play_url:
+                  type: string
+                cover_url:
+                  type: string
+      responses:
+        '200':
+          description: 返回完整 Video 实体
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+
+  /api/v1/video/upload:
+    post:
+      tags: [video]
+      summary: 上传视频文件
+      description: ⚠️ 返回 URL 走 `/static/videos/...`，该前缀当前会 404（见文档注意点 3）。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 仅 .mp4，≤ 200MB
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:9000/static/videos/1/20260907/ab12.mp4
+                  play_url:
+                    type: string
+
+  /api/v1/video/cover:
+    post:
+      tags: [video]
+      summary: 上传封面
+      description: ⚠️ 返回 URL 走 `/static/covers/...`，该前缀当前会 404（见文档注意点 3）。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 允许 jpg/jpeg/png/webp，≤ 10MB
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  cover_url:
+                    type: string
+
+  /api/v1/video/detail:
+    post:
+      tags: [video]
+      summary: 视频详情
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: Video 实体
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/video/delete:
+    post:
+      tags: [video]
+      summary: 删除视频
+      description: 仅作者本人可删除。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/MessageOK'
+        '403':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/video/likes_count/update:
+    post:
+      tags: [video]
+      summary: 更新点赞数
+      description: ⚠️ 语义为 SET 但实现使用增量 SQL，不建议业务调用；计数由点赞/评论链路自动维护。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, likes_count]
+              properties:
+                id:
+                  type: integer
+                likes_count:
+                  type: integer
+                  format: int64
+      responses:
+        '200':
+          $ref: '#/components/responses/MessageOK'
+
+  # ==================== 点赞 ====================
+  /api/v1/like/action:
+    post:
+      tags: [like]
+      summary: 点赞
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [video_id]
+              properties:
+                video_id:
+                  type: integer
+      responses:
+        '200':
+          description: 点赞成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: like success
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/like/unlike:
+    post:
+      tags: [like]
+      summary: 取消点赞
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [video_id]
+              properties:
+                video_id:
+                  type: integer
+      responses:
+        '200':
+          description: 取消成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: unlike success
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/like/is_liked:
+    post:
+      tags: [like]
+      summary: 是否已点赞
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [video_id]
+              properties:
+                video_id:
+                  type: integer
+      responses:
+        '200':
+          description: 查询结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_liked:
+                    type: boolean
+
+  /api/v1/like/my_videos:
+    post:
+      tags: [like]
+      summary: 我点赞过的视频列表
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Video 实体数组，无数据返回 []
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Video'
+
+  # ==================== 评论 ====================
+  /api/v1/comment/publish:
+    post:
+      tags: [comment]
+      summary: 发布评论
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [video_id, content]
+              properties:
+                video_id:
+                  type: integer
+                content:
+                  type: string
+                  example: 好看！
+      responses:
+        '200':
+          $ref: '#/components/responses/MessageOK'
+
+  /api/v1/comment/delete:
+    post:
+      tags: [comment]
+      summary: 删除评论
+      description: 仅评论本人可删除。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment_id]
+              properties:
+                comment_id:
+                  type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/MessageOK'
+
+  /api/v1/comment/list:
+    post:
+      tags: [comment]
+      summary: 获取某视频评论列表
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [video_id]
+              properties:
+                video_id:
+                  type: integer
+      responses:
+        '200':
+          description: Comment 数组
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+
+  # ==================== 社交关注 ====================
+  /api/v1/social/follow:
+    post:
+      tags: [social]
+      summary: 关注
+      description: 关注者为当前登录者；不能关注自己，重复关注返回 500。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vlogger_id]
+              properties:
+                vlogger_id:
+                  type: integer
+      responses:
+        '200':
+          description: 关注成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: followed
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/social/unfollow:
+    post:
+      tags: [social]
+      summary: 取消关注
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vlogger_id]
+              properties:
+                vlogger_id:
+                  type: integer
+      responses:
+        '200':
+          description: 取消成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: unfollowed
+
+  /api/v1/social/followers:
+    post:
+      tags: [social]
+      summary: 粉丝列表
+      description: '`vlogger_id=0` 时用当前登录者；也可显式传 ID 查他人粉丝。列表上限 200，按关注时间倒序。'
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vlogger_id:
+                  type: integer
+                  example: 0
+      responses:
+        '200':
+          description: 粉丝列表与数量
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  followers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Account'
+                  follower_count:
+                    type: integer
+
+  /api/v1/social/vloggers:
+    post:
+      tags: [social]
+      summary: 我关注的人列表
+      description: '`follower_id=0` 时用当前登录者；也可显式传 ID 查他人关注列表。列表上限 200，按关注时间倒序。'
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                follower_id:
+                  type: integer
+                  example: 0
+      responses:
+        '200':
+          description: 关注列表与数量
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vloggers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Account'
+                  vlogger_count:
+                    type: integer
+
+  /api/v1/social/counts:
+    post:
+      tags: [social]
+      summary: 关注数与粉丝数
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 当前登录者的计数
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  follower_count:
+                    type: integer
+                  vlogger_count:
+                    type: integer
+
+  # ==================== 通知 ====================
+  /api/v1/notification/list:
+    post:
+      tags: [notification]
+      summary: 通知列表
+      description: |
+        游标分页：`before_time` 为上一页最后一条通知 `created_at`（Unix 秒），`0` 表示第一页；
+        `next_before_time` 为 `0` 表示无更多。`limit` 默认 20，服务端上限 100。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                before_time:
+                  type: integer
+                  format: int64
+                  example: 0
+                limit:
+                  type: integer
+                  example: 20
+      responses:
+        '200':
+          description: 通知列表与游标
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  next_before_time:
+                    type: integer
+                    format: int64
+
+  /api/v1/notification/stream:
+    get:
+      tags: [notification]
+      summary: 实时通知流（SSE）
+      description: |
+        长连接，`Content-Type: text/event-stream`，每 25s 发 `: ping` 心跳。
+        事件只含通知主键，**不含内容**；前端收到后建议调 `POST /notification/list` 刷新列表。
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: SSE 事件流
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  data: {"event_id":"...","notification_id":1,"recipient_id":2}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        access token（JWT HS256，默认 24h）。服务端做单会话控制：登出/改名/改密码会吊销 token。
+        Feed 流与视频详情为软登录（SoftJWTAuth）：带 token 校验并注入身份，不带视为游客。
+
+  responses:
+    MessageOK:
+      description: 操作成功
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+          example:
+            message: success
+    BadRequest:
+      description: 参数错误 / 业务校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: 未认证 / token 无效或已吊销
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: 资源不存在（gorm.ErrRecordNotFound）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServerError:
+      description: 服务内部错误（注意：部分业务冲突也返回 500，如重复点赞/关注）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 错误描述
+    Message:
+      type: object
+      properties:
+        message:
+          type: string
+          description: 提示文本
+    Account:
+      type: object
+      description: 账号信息（不含密码）
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        avatar_url:
+          type: string
+          description: 头像（可空）
+        bio:
+          type: string
+          description: 简介（可空）
+    FeedVideoItem:
+      type: object
+      description: Feed 流条目（各列表共用）
+      properties:
+        id:
+          type: integer
+        author:
+          type: object
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+        title:
+          type: string
+        description:
+          type: string
+        play_url:
+          type: string
+        cover_url:
+          type: string
+        create_time:
+          type: integer
+          format: int64
+          description: Unix 秒
+        likes_count:
+          type: integer
+          format: int64
+        is_liked:
+          type: boolean
+          description: 带登录 token 时为个性化状态，游客一律 false
+    FeedListBase:
+      type: object
+      properties:
+        video_list:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedVideoItem'
+        has_more:
+          type: boolean
+    Video:
+      type: object
+      description: 视频实体（create_time 为 RFC3339）
+      properties:
+        id:
+          type: integer
+        author_id:
+          type: integer
+        username:
+          type: string
+          description: 作者用户名（冗余）
+        title:
+          type: string
+        description:
+          type: string
+        play_url:
+          type: string
+        cover_url:
+          type: string
+        create_time:
+          type: string
+          format: date-time
+          description: RFC3339
+        likes_count:
+          type: integer
+          format: int64
+        popularity:
+          type: integer
+          format: int64
+    Comment:
+      type: object
+      description: 评论实体（created_at 为 RFC3339）
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+          description: 作者名（冗余）
+        video_id:
+          type: integer
+        author_id:
+          type: integer
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [like, comment, follow]
+        actor_id:
+          type: integer
+          description: 触发者账号 ID
+        actor_name:
+          type: string
+          description: 触发者用户名（冗余）
+        video_id:
+          type: integer
+          description: like/comment 指向的视频；follow 为 0
+        target_id:
+          type: integer
+          description: follow 的被关注者；like/comment 为 0
+        content:
+          type: string
+          description: comment 内容快照；like/follow 为空
+        created_at:
+          type: integer
+          format: int64
+          description: Unix 秒
+
+security: []
