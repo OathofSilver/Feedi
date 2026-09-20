@@ -30,7 +30,7 @@
 |---|---|
 | 语言 / 运行时 | Go 1.25 |
 | Web 框架 | Gin |
-| 关系型存储 | MySQL 8 + GORM（AutoMigrate 自动建表） |
+| 关系型存储 | MySQL + GORM（启动时 EnsureDatabase + AutoMigrate 自动建表） |
 | 缓存 | Redis（`go-redis/v9`）+ 进程内 `go-cache` 做 L1 |
 | 消息队列 | RabbitMQ（`amqp091-go`） |
 | 鉴权 | JWT（HS256）+ Redis 会话态 |
@@ -46,15 +46,15 @@
 api 与 worker 是**两个独立进程**，只通过 MySQL Outbox 表 + RabbitMQ 协作：
 
 ```
-写入侧（同步，强一致）
-  发布/点赞/评论/关注 ──► MySQL 本地事务 ──┬──► 业务表
-                                          └──► outbox 表（待投递事件）
+业务写入（同步落库，DB 是权威源）
+  发布视频 ──► MySQL 本地事务 ──┬──► videos 表
+                               └──► outbox 表（待投递的时间线事件）
+  点赞 / 评论 / 关注 ──► MySQL 业务表 + 直接投递 MQ 事件（派生数据与实时推送）
 
-投递侧（异步，最终一致）
-  Outbox 轮询器 ──► RabbitMQ ──► worker 消费者 ──► Redis
-                                                 ├─ 全局时间线 ZSET（feed:global_timeline）
-                                                 ├─ 点赞数 / 评论数累计
-                                                 └─ 分钟热度窗口 ZSET（hot:video:1m:*）
+可靠投递（异步，最终一致）
+  Outbox 轮询器（1s）──► RabbitMQ ──► worker 消费者 ──► Redis
+                                                       ├─ 全局时间线 ZSET（feed:global_timeline）
+                                                       └─ 分钟热度窗口 ZSET（hot:video:1m:*）
 
 读取侧（多级缓存）
   客户端 ──► L1 go-cache(5s) ──► L2 Redis ──► L3 MySQL
@@ -65,8 +65,9 @@ api 与 worker 是**两个独立进程**，只通过 MySQL Outbox 表 + RabbitMQ
   通知事件 ──► RabbitMQ ──► Broadcaster ──► SSE Hub（账号 → 在线连接表）──► 浏览器
 ```
 
-> **为什么用 Outbox**：发布视频时，"视频落库"和"写 Redis 时间线"跨了两种存储，直接双写会出现"库里有、时间线没有"或反之。
+> **为什么用 Outbox**：发布视频时，"视频落库"和"进 Redis 时间线"跨了两种存储，直接双写会出现"库里有、时间线没有"或反之。
 > 这里把事件当作数据的一部分写进同一事务的 outbox 表，再由轮询器负责可靠投递，**用本地事务换来跨存储的最终一致性**。
+> 点赞/评论/热度属于可由 DB 重放的派生数据，因此直接投递 MQ，靠消费端的幂等 key（`msg:processed:{messageID}`）保证重投不重复计算。
 
 ---
 
